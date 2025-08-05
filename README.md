@@ -90,7 +90,7 @@ If you are interested in our work, you can cite our paper, for any code problem,
 
 ```tex
 @article{LLMCER-SIGMOD2026,  
-	author={Jiajie Fu and Haitong Tang and Arijit Khan and Sharad Mehrotra and Xiangyu Ke and Yunjun Gao}, 
+	author={Fu, Jiajie and Tang, Haitong and Khan, Arijit and Mehrotra, Sharad and Ke, Xiangyu and Gao, Yunjun}, 
     title={In-context Clustering-based Entity Resolution with Large Language Models: A Design Space Exploration},  
     journal={Proceedings of the ACM on Management of Data (SIGMOD)}, 
     year = {2026}    
