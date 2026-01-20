@@ -1,0 +1,9 @@
+all-MiniLM-L6-v2/
+all-MiniLM/
+datasets/
+logs/
+code/
+__pycache__/
+*.pyc
+.DS_Store
+final_results.txt

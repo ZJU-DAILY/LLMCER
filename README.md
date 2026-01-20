@@ -1,101 +1,160 @@
-# Project
-the source code and datasets for our paper “In-context Clustering-based Entity Resolution with Large Language Models: A Design Space Exploration” (SIGMOD26)
 
-# Requirements
--------
-- Python >= 3.8.0
-- scikit-learn 1.3.2
-- matplotlib, networkx, tqdm, hydra, numpy, pandas 
---------
+# 🚀 LLMCER
 
-# Datasets and Pre-train model
-----------
-We use the following datasets in our experiments:
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue?style=for-the-badge&logo=python)
+![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4-green?style=for-the-badge&logo=openai)
+![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
-- [AffiliationString](https://github.com/merialdo/research.alaska)
-- [CiteSheer](https://pages.cs.wisc.edu/~anhai/data)
-- [Cora](https://www.gabormelli.com/RKB/CORA_Citation_Benchmark_Task)
-- [Google-DBLP](https://pages.cs.wisc.edu/~anhai/data)
-- [Music](http://oaei.ontologymatching.org/2011/instance/)
-- [Sigmod](http://www.inf.uniroma3.it/db/sigmod2020contest/)
-- [Song](https://pages.cs.wisc.edu/~anhai/data)
+> **A High-Performance, Modular, and Robust Framework for Entity Resolution using Large Language Models.**
 
-We use the pre-trained models utilized by SBERT:
-- [all-MiniLM-L6-v2](https://www.sbert.net/)
+---
 
----------
+## 📖 Overview
 
+**LLMCER** (Large Language Model for Entity Resolution) is a cutting-edge pipeline designed to solve the complex problem of Entity Resolution (ER) — identifying and merging records that refer to the same real-world entity across different datasets. 
 
-# Structure
-------------
-- requirements.txt: the environment required to run the code.
-- LLMCER.ipynb: the code to finish ER task.
+By leveraging the semantic understanding of **LLMs** (GPT-4o-mini) combined with traditional **Locality Sensitive Hashing (LSH)** and **K-Means Clustering**, LLMCER achieves high accuracy while maintaining scalability through parallel processing and intelligent blocking.
 
-------------
-# Usage
-------------
+---
 
-## 1. Set Up the Environment：
- ```
- pip install -r requirements.txt
- ```
+## ✨ Key Features
 
-## 2. Running the Jupyter Notebook:
- ```
- jupyter notebook
- ```
+*   **⚡ Parallel Execution**: Optimized with `ThreadPoolExecutor` for concurrent processing of entity blocks, significantly reducing runtime.
+*   **🛡️ Misclustering Detection Guardrail (MDG)**: A novel safety mechanism that automatically detects and rejects hallucinatory or illogical clustering outputs from the LLM.
+*   **🧩 Modular Architecture**: Clean separation of concerns (Vectorization, Clustering, LLM Interaction, Metrics) for easy maintenance and extensibility.
+*   **🔍 Two-Stage Resolution**:
+    1.  **Separation**: Splits over-clustered blocks into finer groups.
+    2.  **Merging**: Re-evaluates and merges similar groups to ensure high recall.
+*   **📊 Comprehensive Metrics**: Automatic calculation of **Purity**, **Inverse Purity**, **F-Measure**, and **ARI** (Adjusted Rand Index).
+*   **📝 Smart Logging**: Real-time logging with timestamped files and detailed token usage statistics.
 
+---
 
-## 3. Running End-to-End ER Code：
+## 📂 Project Structure
 
-As an example, we will demonstrate how to use the `LLMCER.ipynb` file.
+The project is organized for clarity and scalability:
 
-### Step 1: Modify API Key
-
-To connect to GPT, you need to configure your proxy and set your `api_key`. Open the notebook and locate the following lines:
-
-```python
-import os
-
-client = OpenAI(
-    api_key="your api key"
-)
+```plaintext
+LLMCER/
+├── llmcer/                 # 🧠 Core Library Code
+│   ├── clustering.py       # K-Means, LSH, and MDG logic
+│   ├── config.py           # Centralized configuration
+│   ├── data_utils.py       # Data loading and prompt generation
+│   ├── llm_interaction.py  # OpenAI API handling & prompt engineering
+│   ├── metrics.py          # Evaluation metrics (F1, ARI, etc.)
+│   ├── pipeline.py         # Main orchestration logic (Separation & Merge)
+│   ├── vectorization.py    # Embedding generation (Sentence-BERT)
+│   └── ...
+├── scripts/                # 🏃‍♂️ Execution Scripts
+│   └── run_pipeline.py     # Entry point for the python pipeline
+├── datasets/               # 💾 Data Storage
+│   └── demo_dataset/       # Example datasets
+├── logs/                   # 📝 Runtime Logs (Auto-generated)
+├── run.sh                  # 🚀 Master Execution Script (Config & Run)
+└── requirements.txt        # 📦 Dependencies
 ```
 
-Replace `"your api key"` with your actual OpenAI API key.
+---
 
-### Step 2: Update File Paths
+## 🚀 Getting Started
 
-Locate the variables for the data path (`file_path`) and the ground truth path (`gt_path`). Update them to point to your dataset and ground truth files. For example:
+### 1. Prerequisites
 
-```python
-file_path = './dataset/cora/'
-data_file_path = file_path + 'cora.csv'
-gt_path = file_path + 'gt.csv'
+*   **Python 3.8+**
+*   An active **OpenAI API Key**
+
+### 2. Installation
+
+Clone the repository and install the required dependencies:
+
+```bash
+git clone https://github.com/your-repo/LLMCER.git
+cd LLMCER
+pip install -r requirements.txt
 ```
 
-Replace `file_path` with the directory containing your dataset, and ensure `data_file_path` and `gt_path` point to the correct files.
+### 3. Configuration
 
-### Step 3: Run the Notebook
+The project is controlled via the `run.sh` script. You **must** configure your environment variables here before running.
 
-Once the necessary modifications are made:
+Open `run.sh` and update the following:
 
-1. Open the Jupyter Notebook file.
-2. Execute the notebook cells sequentially.
-3. Wait for the results to be generated.
+```bash
+# ==========================================
+# Configuration Section
+# ==========================================
 
-# Citation
+# 1. OpenAI API Key
+export OPENAI_API_KEY="sk-..."  # <--- Put your actual API Key here
 
-If you are interested in our work, you can cite our paper, for any code problem, you can contact haitong, tht@zju.edu.cn, thx❤
+# 2. Dataset Paths
+export DATASET_PATH="/abs/path/to/your/dataset.xlsx"
+export GROUND_TRUTH_PATH="/abs/path/to/your/ground_truth.txt"
 
-```tex
-@article{LLMCER-SIGMOD2026,  
-	author={Fu, Jiajie and Tang, Haitong and Khan, Arijit and Mehrotra, Sharad and Ke, Xiangyu and Gao, Yunjun}, 
-    title={In-context Clustering-based Entity Resolution with Large Language Models: A Design Space Exploration},  
-    journal={Proceedings of the ACM on Management of Data (SIGMOD)}, 
-    year = {2026}    
-}
+# 3. Model Configuration
+# Path to local embedding model or Hugging Face model name
+export EMBEDDING_MODEL_PATH="./all-MiniLM-L6-v2" 
+export OPENAI_MODEL="gpt-4o-mini"
 ```
 
+---
+
+## 🖥️ Usage
+
+Once configured, simply execute the shell script to start the pipeline:
+
+```bash
+./run.sh
+```
+
+### What happens next?
+
+1.  **Vectorization**: The dataset is converted into vector embeddings.
+2.  **Blocking**: LSH groups similar records into coarse blocks.
+3.  **Separation**: LLM analyzes blocks and splits them into pure clusters.
+4.  **Merging**: The system identifies split clusters that belong to the same entity and merges them.
+5.  **Validation**: MDG checks ensure structural integrity throughout the process.
+6.  **Reporting**: Final metrics and logs are output to the console and `logs/` directory.
+
+---
+
+## 📊 Output & Logging
+
+### Console Output
+You will see real-time progress bars, stage completion status, and a final summary:
+
+```text
+========================================
+FINAL METRICS REPORT
+========================================
+Purity:         0.9850
+Inverse Purity: 0.9920
+F-Measure:      0.9885
+ARI:            0.9750
+----------------------------------------
+Total API Calls:     145
+Total Execution Time: 45.20 s
+Total Tokens:        12500
+Total MDG Interventions: 3
+========================================
+```
+
+### Log Files
+Every run generates a detailed log file in `logs/`, named with the dataset and timestamp:
+`logs/demo_er_dataset_run_20260111_160914.log`
+
+---
+
+## 🛠️ Advanced Tuning
+
+You can fine-tune the pipeline by modifying thresholds in `scripts/run_pipeline.py`:
+
+*   `lsh_threshold`: Controls the strictness of the initial blocking.
+*   `separation_threshold`: Controls when to split a cluster.
+*   `block_threshold` & `merge_threshold`: Control the merging aggressiveness.
 
 
+
+<p align="center">
+  <i>Built with ❤️ by the LLMCER Team</i>
+</p>

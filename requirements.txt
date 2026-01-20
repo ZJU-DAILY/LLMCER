@@ -1,0 +1,11 @@
+
+openai
+sentence-transformers
+scikit-learn
+numpy
+pandas
+networkx
+lshashpy3
+openpyxl
+matplotlib
+scipy
