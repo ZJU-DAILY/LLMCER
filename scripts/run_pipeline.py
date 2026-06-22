@@ -8,47 +8,39 @@ import numpy as np
 # Add parent directory to path to import llmcer
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from llmcer.config import DATASET_PATH, GROUND_TRUTH_PATH, OPENAI_MODEL
+from llmcer.config import (DATASET_PATH, GROUND_TRUTH_PATH, OPENAI_MODEL,
+                           BLOCK_THRESHOLD, SEPARATION_THRESHOLD, MERGE_THRESHOLD,
+                           SET_SIZE, SET_DIVERSITY)
 from llmcer.data_utils import get_ground_truth
 from llmcer.vectorization import cal_total_simi_vector
 from llmcer.clustering import lsh_block
-from llmcer.pipeline import seperate_parallel
-from llmcer.llm_interaction import merge_2
-from llmcer.metrics import calculate_purity, calculate_inverse_purity, calculate_fp_measure, calculate_ari
+from llmcer.pipeline import run_blocks
+from llmcer.metrics import (calculate_purity, calculate_inverse_purity,
+                            calculate_fp_measure, calculate_ari,
+                            calculate_acc, calculate_nmi,
+                            calculate_bcubed_metrics)
 from llmcer.id_utils import get_id_column
+
 
 def convert_xlsx_to_csv(xlsx_path):
     csv_path = xlsx_path.replace('.xlsx', '.csv')
     if not os.path.exists(csv_path):
         print(f"Converting {xlsx_path} to {csv_path}...")
         df = pd.read_excel(xlsx_path)
-        
-        # Check for ID column using case-insensitive check
-        id_col = get_id_column(df)
-        
-        if id_col:
-            # Check if IDs are integers (optional verification)
-            try:
-                first_id = int(df[id_col].iloc[0])
-            except:
-                pass
-        else:
-            print("Warning: No ID column found (case-insensitive search for 'id').")
-            
         df.to_csv(csv_path, index=False)
     return csv_path
 
+
 def main():
     print("Starting LLMCER Pipeline...")
-    
+
     # 0. Prepare Data
     if DATASET_PATH.endswith('.xlsx'):
         dataset_csv_path = convert_xlsx_to_csv(DATASET_PATH)
     else:
         dataset_csv_path = DATASET_PATH
-        
     print(f"Using dataset: {dataset_csv_path}")
-    
+
     # Load Ground Truth
     print(f"Loading ground truth from {GROUND_TRUTH_PATH}...")
     try:
@@ -61,84 +53,91 @@ def main():
     # 1. Vectorization & Similarity Matrix
     print("Calculating vectors and similarity matrix...")
     vectors, simi_matrix, data = cal_total_simi_vector(dataset_csv_path)
-    
-    # 2. Blocking (LSH)
+
+    # Fixed, validation-tuned thresholds (see llmcer/config.py).
+    print(f"Thresholds: block={BLOCK_THRESHOLD}  separation={SEPARATION_THRESHOLD}  "
+          f"merge={MERGE_THRESHOLD}  | S_s={SET_SIZE} S_d={SET_DIVERSITY}")
+
+    # 2. Blocking (LSH) -- hard partition into blocks.
     print("Running LSH Blocking...")
-    lsh_threshold = 0.5 # Default from intuition, check notebook for better value
-    # Notebook cell 998 passes 'similarity_threshold'.
-    # I'll stick with 0.5
-    merge_clusters_pre = lsh_block(vectors, data, lsh_threshold)
-    print(f"LSH Blocking done. Found {len(merge_clusters_pre)} blocks.")
-    
-    # 3. Separation
-    print("Running Separation (Cluster Splitting)...")
-    separation_threshold = 0.5 # Need to define this. 'the_max_nex' in notebook.
-    # In notebook cell 765, `seperate` is called with `the_max_nex`.
-    # In cell 915 `seperate_4` calls `llm_seperate` with `the_threhold`.
-    # Value is not clear, but likely around 0.5.
-    
-    result_sep, api_calls, sep_time, sep_tokens, in_tokens, out_tokens, mdg_fails = seperate_parallel(
-        vectors, simi_matrix, merge_clusters_pre, data, separation_threshold
-    )
-    print(f"Separation done. Resulting clusters: {len(result_sep)}")
-    print(f"Stats: API Calls={api_calls}, Time={sep_time:.2f}s, Tokens={sep_tokens}")
-    print(f"MDG Interventions: {mdg_fails}")
-    
-    # 4. Merging
-    print("Running Merging...")
-    block_threshold = 0.8 # From notebook usage of merge_2?
-    merge_threshold = 0.6 # From notebook usage?
-    # Cell 1107: merge_2(..., block_threshold , merge_threshold)
-    # Cell 1168: np.arange(merge_threshold+0.02 , block_threshold, 0.02)
-    # I'll use 0.8 and 0.6 as placeholders.
-    
-    final_result, merge_api_calls, merge_time, merge_tokens, m_in_tok, m_out_tok = merge_2(
-        result_sep, simi_matrix, data, block_threshold, merge_threshold
-    )
-    print(f"Merging done. Final clusters: {len(final_result)}")
-    print(f"Stats: API Calls={merge_api_calls}, Time={merge_time:.2f}s, Tokens={merge_tokens}")
+    blocks = lsh_block(vectors, data, BLOCK_THRESHOLD)
+    print(f"LSH Blocking done. Found {len(blocks)} blocks.")
+
+    # 3-4. Per-block: NRS -> in-context clustering (+MDG) -> CMR (Algorithm 4).
+    print("Running in-context clustering + hierarchical merge per block...")
+    t0 = time.time()
+    final_result, stats = run_blocks(vectors, simi_matrix, blocks, data,
+                                     S_s=SET_SIZE, S_d=SET_DIVERSITY)
+    wall = time.time() - t0
+    print(f"Done. Final clusters: {len(final_result)}")
+    print(f"Stats: API Calls={stats['api_calls']}, LLM time={stats['time']:.2f}s, "
+          f"Tokens={stats['tokens']}, MDG interventions={stats['mdg_fails']}, "
+          f"merge rounds={stats['rounds']}")
 
     # 5. Metrics
-    print("="*40)
+    print("=" * 40)
     print("FINAL METRICS REPORT")
-    print("="*40)
-    
+    print("=" * 40)
+
     if ground_truth:
-        # Metrics functions expect list of lists.
+        # Augment Ground Truth with singletons for any record not in GT pairs,
+        # so every record participates in the evaluation exactly once.
+        if hasattr(data, 'iloc'):
+            id_col = get_id_column(data)
+            all_ids = data[id_col].tolist() if id_col else data.iloc[:, 0].tolist()
+        else:
+            all_ids = []
+
+        gt_ids = set()
+        for cluster in ground_truth:
+            for item in cluster:
+                gt_ids.add(str(item).strip())
+
+        missing = 0
+        for item in all_ids:
+            if str(item).strip() not in gt_ids:
+                ground_truth.append([item])
+                missing += 1
+        print(f"Augmented ground truth with {missing} singletons "
+              f"(total records: {len(all_ids)}).")
+
+        acc = calculate_acc(ground_truth, final_result)
+        nmi = calculate_nmi(ground_truth, final_result)
         purity = calculate_purity(ground_truth, final_result)
         inv_purity = calculate_inverse_purity(ground_truth, final_result)
         f_measure = calculate_fp_measure(ground_truth, final_result)
         ari = calculate_ari(ground_truth, final_result)
-        
+        bcubed = calculate_bcubed_metrics(ground_truth, final_result)
+
+        # ACC and FP-measure are the paper's primary metrics (Section 6.1).
+        print(f"ACC:            {acc:.4f}")
+        print(f"FP-measure:     {f_measure:.4f}")
+        print(f"NMI:            {nmi:.4f}")
+        print(f"ARI:            {ari:.4f}")
+        print("-" * 20)
         print(f"Purity:         {purity:.4f}")
         print(f"Inverse Purity: {inv_purity:.4f}")
-        print(f"F-Measure:      {f_measure:.4f}")
-        print(f"ARI:            {ari:.4f}")
+        print(f"BCubed F1:      {bcubed['f1']:.4f}  "
+              f"(P={bcubed['precision']:.4f} R={bcubed['recall']:.4f})")
     else:
         print("No ground truth provided. Skipping accuracy metrics.")
 
-    # Total Stats
-    total_api_calls = api_calls + merge_api_calls
-    total_time = sep_time + merge_time
-    total_tokens = sep_tokens + merge_tokens
-    total_in_tokens = in_tokens + m_in_tok
-    total_out_tokens = out_tokens + m_out_tok
-    
     print("-" * 40)
-    print(f"Total API Calls:     {total_api_calls}")
-    print(f"Total Execution Time: {total_time:.2f} s")
-    print(f"Total Tokens:        {total_tokens}")
-    print(f"  - Input Tokens:    {total_in_tokens}")
-    print(f"  - Output Tokens:   {total_out_tokens}")
-    print(f"Total MDG Interventions: {mdg_fails}")
-    print("="*40)
-    
+    print(f"Total API Calls:      {stats['api_calls']}")
+    print(f"Total LLM Time:       {stats['time']:.2f} s  (wall: {wall:.2f} s)")
+    print(f"Total Tokens:         {stats['tokens']}")
+    print(f"  - Input Tokens:     {stats['in_tokens']}")
+    print(f"  - Output Tokens:    {stats['out_tokens']}")
+    print(f"Total MDG Interventions: {stats['mdg_fails']}")
+    print("=" * 40)
+
     # Save results
     output_path = "final_results.txt"
     with open(output_path, "w") as f:
         for cluster in final_result:
             f.write(" ".join(map(str, cluster)) + "\n")
     print(f"Results saved to {output_path}")
+
 
 if __name__ == "__main__":
     main()

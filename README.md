@@ -9,14 +9,6 @@
 
 ---
 
-## 📖 Overview
-
-**LLMCER** (Large Language Model for Entity Resolution) is a cutting-edge pipeline designed to solve the complex problem of Entity Resolution (ER) — identifying and merging records that refer to the same real-world entity across different datasets. 
-
-By leveraging the semantic understanding of **LLMs** (GPT-4o-mini) combined with traditional **Locality Sensitive Hashing (LSH)** and **K-Means Clustering**, LLMCER achieves high accuracy while maintaining scalability through parallel processing and intelligent blocking.
-
----
-
 ## ✨ Key Features
 
 *   **⚡ Parallel Execution**: Optimized with `ThreadPoolExecutor` for concurrent processing of entity blocks, significantly reducing runtime.
@@ -53,6 +45,21 @@ LLMCER/
 ├── run.sh                  # 🚀 Master Execution Script (Config & Run)
 └── requirements.txt        # 📦 Dependencies
 ```
+
+---
+
+## 📊 Datasets
+
+The repository includes several benchmark datasets for Entity Resolution:
+
+*   **Cora**: Citation data (Author, Title, Venue, Year).
+*   **Citesheer**: Scientific publications and citations.
+*   **Google-DBLP**: Bibliographic data from Google Scholar and DBLP.
+*   **Walmart-Amazon**: Product matching between Walmart and Amazon.
+*   **Music20K**: Large-scale music records.
+*   **Sigmod**: Database records from SIGMOD.
+*   **Affiliation**: Academic affiliation strings.
+*   **Song**: Song metadata.
 
 ---
 

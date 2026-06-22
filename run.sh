@@ -6,13 +6,17 @@
 # ==========================================
 
 # 1. OpenAI API Key
-# Replace with your actual API key
-export OPENAI_API_KEY=""
+# The key is read from the git-ignored .env file by llmcer/config.py, so it is
+# NOT hard-coded here (committing it would leak the secret). To override for a
+# single run you may still `export OPENAI_API_KEY=sk-...` before calling run.sh.
+# Only export it here if it is non-empty, so we never clobber the .env value
+# with an empty string.
+# export OPENAI_API_KEY="sk-..."
 
 # 2. Dataset Paths
 # Relative paths from project root
-export DATASET_PATH="datasets/demo_dataset/demo_er_dataset.xlsx"
-export GROUND_TRUTH_PATH="datasets/demo_dataset/demo_er_ground_truth.txt"
+export DATASET_PATH="datasets/cora/cora.csv"
+export GROUND_TRUTH_PATH="datasets/cora/gt.csv"
 
 # 3. Model Configuration
 # Path to local embedding model or Hugging Face model name

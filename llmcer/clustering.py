@@ -1,4 +1,5 @@
 
+import math
 from sklearn.cluster import KMeans
 import numpy as np
 import networkx as nx
@@ -7,21 +8,57 @@ from collections import defaultdict
 from llmcer.config import LSH_HASH_SIZE, LSH_INPUT_DIM, LSH_NUM_HASHTABLES
 
 def elbow_method(embeddings, max_k=5):
+    """
+    Estimate the diversity (number of entities) of a block via the elbow
+    heuristic (paper Algorithm 1, line 9: "compute diversity of B using the
+    elbow method").
+
+    K-means inertia is monotonically non-increasing in k, so picking the k with
+    minimum distortion always returns max_k and never finds an elbow. Instead we
+    locate the elbow as the k that lies furthest from the line connecting the
+    first and last (k, distortion) points (the standard geometric "knee"
+    detection used by Kneedle), which corresponds to the point of maximum
+    curvature / diminishing returns.
+    """
     if embeddings is None or embeddings.shape[0] < 2:
-        return 1  
-    
+        return 1
+
+    n = embeddings.shape[0]
+    upper = min(max_k, n)
+    K = list(range(1, upper + 1))
+    if len(K) <= 2:
+        # Not enough points to detect a knee; default to a 2-way split when possible.
+        return min(2, n)
+
     distortions = []
-    K = range(1, min(max_k, embeddings.shape[0]) + 1)
-    
     for k in K:
-        kmeans = KMeans(n_clusters=k, init='k-means++', random_state=42)
+        kmeans = KMeans(n_clusters=k, init='k-means++', random_state=42, n_init=10)
         kmeans.fit(embeddings)
         distortions.append(kmeans.inertia_)
-    optimal_k_index = np.argmin(distortions[1:]) + 1  
-    optimal_k = K[optimal_k_index]
 
-    # print(f"best is : {optimal_k}")
-    return optimal_k
+    distortions = np.asarray(distortions, dtype=float)
+
+    # Degenerate case: identical points -> all distortions ~0 -> no real elbow.
+    if distortions[0] <= 1e-12:
+        return 1
+
+    # Geometric knee: distance of each (k, distortion) point from the chord
+    # joining the first and last points. The k with the largest distance is the
+    # elbow. Normalise both axes to [0, 1] so the two dimensions are comparable.
+    x = np.asarray(K, dtype=float)
+    x_norm = (x - x[0]) / (x[-1] - x[0])
+    y = distortions
+    y_norm = (y - y.min()) / (y.max() - y.min() + 1e-12)
+
+    # Line from (x_norm[0], y_norm[0]) to (x_norm[-1], y_norm[-1]).
+    x0, y0 = x_norm[0], y_norm[0]
+    x1, y1 = x_norm[-1], y_norm[-1]
+    dx, dy = (x1 - x0), (y1 - y0)
+    denom = math.hypot(dx, dy) + 1e-12
+    distances = np.abs(dy * (x_norm - x0) - dx * (y_norm - y0)) / denom
+
+    optimal_k = int(K[int(np.argmax(distances))])
+    return max(1, optimal_k)
 
 def kmeans_clustering(embeddings, n_clusters):
     if embeddings is None or len(embeddings) < n_clusters:
@@ -107,55 +144,94 @@ def lsh_block(vectors, data, similarity_threshold):
 
 def mdg_check(clusters, similarity_matrix):
     """
-    Misclustering Detection Guardrail (MDG)
-    Checks if any record is closer to another cluster than its own.
-    
+    Misclustering Detection Guardrail (MDG) -- paper Algorithm 2 / Definition 1.
+
+    Definition 1:
+      * intra-cluster similarity of a record r = the MINIMUM similarity between
+        r and the other records in the same cluster;
+      * inter-cluster similarity of r = the MAXIMUM similarity between r and
+        records in OTHER clusters.
+    Algorithm 2 rejects the clustering (returns False) if ANY record has
+    intra < inter.
+
     Args:
-        clusters: List of lists of indices (integers).
+        clusters: List of lists of record indices (integers).
         similarity_matrix: Pre-computed similarity matrix.
-        
+
     Returns:
-        bool: True if acceptable, False if misclustering detected.
+        bool: True if acceptable, False if a misclustering is detected.
+
+    Note on singletons: a singleton has no same-cluster peers, so its intra
+    similarity is undefined. Per Definition 1 the guardrail compares pairs that
+    exist; a lone record in its own cluster cannot be "misclustered with" peers
+    it does not have. We therefore only test records that have at least one peer.
+    A record set whose clustering is entirely singletons is trivially acceptable
+    (there is nothing to split further), matching the exit-condition semantics
+    in the paper.
     """
-    # Filter out empty clusters
     valid_clusters = [c for c in clusters if c]
-    
     if len(valid_clusters) < 2:
         return True
-        
+
     for i, current_cluster in enumerate(valid_clusters):
         for r_j in current_cluster:
-            # 1. Calculate intra-cluster similarity (Average similarity to other members)
-            intra_sims = []
-            for r_k in current_cluster:
-                if r_j != r_k:
-                    intra_sims.append(similarity_matrix[r_j][r_k])
-            
-            # If singleton, intra-sim is effectively high (1.0) as it has no peers.
-            # We treat it as 1.0 to avoid false positives unless it's very close to another cluster.
-            avg_intra_sim = sum(intra_sims) / len(intra_sims) if intra_sims else 1.0
-            
-            # 2. Calculate inter-cluster similarity (Max of average similarity to other clusters)
-            max_inter_sim = -1.0
-            
+            # 1. intra = MINIMUM similarity to same-cluster peers (Definition 1).
+            intra_sims = [similarity_matrix[r_j][r_k]
+                          for r_k in current_cluster if r_k != r_j]
+            if not intra_sims:
+                # Singleton record: no intra pair to violate. Skip.
+                continue
+            min_intra_sim = min(intra_sims)
+
+            # 2. inter = MAXIMUM similarity to records in any OTHER cluster.
+            max_inter_sim = -float('inf')
             for k, other_cluster in enumerate(valid_clusters):
                 if i == k:
                     continue
-                    
-                inter_sims = []
                 for r_k in other_cluster:
-                    inter_sims.append(similarity_matrix[r_j][r_k])
-                
-                if inter_sims:
-                    avg_inter_sim = sum(inter_sims) / len(inter_sims)
-                    if avg_inter_sim > max_inter_sim:
-                        max_inter_sim = avg_inter_sim
-            
-            # 3. Compare
-            # If max_inter_sim is -1 (no other valid clusters), pass.
-            if max_inter_sim > -1.0:
-                if avg_intra_sim < max_inter_sim:
-                    # Misclustering detected
-                    return False
-                    
+                    s = similarity_matrix[r_j][r_k]
+                    if s > max_inter_sim:
+                        max_inter_sim = s
+
+            # 3. Reject if a record is closer to another cluster than to its own.
+            if max_inter_sim > -float('inf') and min_intra_sim < max_inter_sim:
+                return False
+
     return True
+
+
+def find_misclustered_records(clusters, similarity_matrix):
+    """
+    Return the list of (cluster_index, record) pairs that violate Definition 1,
+    i.e. records whose intra-cluster (min) similarity is below their
+    inter-cluster (max) similarity. Used by record-set regeneration (paper
+    Algorithm 4 lines 5 & 10) to relocate misclustered records rather than
+    blindly retrying the same prompt.
+    """
+    valid_clusters = [c for c in clusters if c]
+    offenders = []
+    if len(valid_clusters) < 2:
+        return offenders
+
+    for i, current_cluster in enumerate(valid_clusters):
+        for r_j in current_cluster:
+            intra_sims = [similarity_matrix[r_j][r_k]
+                          for r_k in current_cluster if r_k != r_j]
+            if not intra_sims:
+                continue
+            min_intra_sim = min(intra_sims)
+
+            max_inter_sim = -float('inf')
+            best_other = None
+            for k, other_cluster in enumerate(valid_clusters):
+                if i == k:
+                    continue
+                for r_k in other_cluster:
+                    s = similarity_matrix[r_j][r_k]
+                    if s > max_inter_sim:
+                        max_inter_sim = s
+                        best_other = k
+
+            if max_inter_sim > -float('inf') and min_intra_sim < max_inter_sim:
+                offenders.append((i, r_j, best_other))
+    return offenders
