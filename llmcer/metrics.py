@@ -1,10 +1,87 @@
 
 from collections import Counter
-from sklearn.metrics import adjusted_rand_score
+import numpy as np
+from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
+from scipy.optimize import linear_sum_assignment
 
 def normalize_id(item):
     """Normalize item ID to string for consistent comparison."""
     return str(item).strip()
+
+def _aligned_labels(true_clusters, predicted_clusters):
+    """
+    Build integer label vectors (true_labels, predicted_labels) over the union
+    of all items appearing in either clustering. Items missing from one side are
+    given a unique singleton label there. Returns (true_labels, pred_labels) as
+    numpy arrays aligned by a shared item ordering.
+    """
+    true_clusters = [[normalize_id(x) for x in c] for c in true_clusters]
+    predicted_clusters = [[normalize_id(x) for x in c] for c in predicted_clusters]
+
+    true_map = {}
+    for i, c in enumerate(true_clusters):
+        for item in c:
+            true_map[item] = i
+    pred_map = {}
+    for i, c in enumerate(predicted_clusters):
+        for item in c:
+            pred_map[item] = i
+
+    items = sorted(set(true_map) | set(pred_map))
+    if not items:
+        return np.array([], dtype=int), np.array([], dtype=int)
+
+    # Fresh singleton labels for items missing on a side so they never spuriously match.
+    next_t = len(true_clusters)
+    next_p = len(predicted_clusters)
+    t_labels, p_labels = [], []
+    for it in items:
+        if it in true_map:
+            t_labels.append(true_map[it])
+        else:
+            t_labels.append(next_t); next_t += 1
+        if it in pred_map:
+            p_labels.append(pred_map[it])
+        else:
+            p_labels.append(next_p); next_p += 1
+    return np.array(t_labels, dtype=int), np.array(p_labels, dtype=int)
+
+def calculate_acc(true_clusters, predicted_clusters):
+    """
+    Clustering Accuracy (ACC) per paper Eq. (2)-(3).
+
+    ACC = CorrectCount / |R|, where the predicted clusters are optimally
+    matched (1-to-1) to ground-truth clusters by maximising the total
+    intersection ("reordering Y based on their intersection sizes with the
+    predicted clusters", Eq. 3). We solve the assignment with the Hungarian
+    algorithm on the negated contingency matrix.
+    """
+    t_labels, p_labels = _aligned_labels(true_clusters, predicted_clusters)
+    n = len(t_labels)
+    if n == 0:
+        return 0.0
+
+    true_ids = sorted(set(t_labels.tolist()))
+    pred_ids = sorted(set(p_labels.tolist()))
+    t_index = {v: i for i, v in enumerate(true_ids)}
+    p_index = {v: i for i, v in enumerate(pred_ids)}
+
+    # contingency[pred, true] = #items in that predicted & true cluster
+    contingency = np.zeros((len(pred_ids), len(true_ids)), dtype=np.int64)
+    for tl, pl in zip(t_labels, p_labels):
+        contingency[p_index[pl], t_index[tl]] += 1
+
+    # Maximise overlap -> minimise negative overlap.
+    row_ind, col_ind = linear_sum_assignment(-contingency)
+    correct = contingency[row_ind, col_ind].sum()
+    return float(correct) / n
+
+def calculate_nmi(true_clusters, predicted_clusters):
+    """Normalized Mutual Information between the two clusterings."""
+    t_labels, p_labels = _aligned_labels(true_clusters, predicted_clusters)
+    if len(t_labels) == 0:
+        return 0.0
+    return float(normalized_mutual_info_score(t_labels, p_labels))
 
 def calculate_purity(true_clusters, predicted_clusters):
     # Normalize clusters

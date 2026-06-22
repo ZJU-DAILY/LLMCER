@@ -1,0 +1,5 @@
+Captured stdout from the validation scripts is written here.
+Generate with:
+  python issue_experiments/test_issues.py        > issue_experiments/results/test_issues.txt
+  python issue_experiments/test_end_to_end.py     > issue_experiments/results/test_end_to_end.txt
+  python issue_experiments/check_datasets.py      > issue_experiments/results/check_datasets.txt

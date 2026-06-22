@@ -6,13 +6,147 @@ import numpy as np
 import pandas as pd
 import csv
 from openai import OpenAI
-from llmcer.config import OPENAI_API_KEY, OPENAI_MODEL, PRE_PROMPT_CLASSIFY, PRE_PROMPT_MERGE
+from llmcer.config import (OPENAI_API_KEY, OPENAI_MODEL, OPENAI_BASE_URL,
+                          PRE_PROMPT_CLASSIFY, PRE_PROMPT_MERGE)
 from llmcer.data_utils import get_prompt_from_indices
 from llmcer.utils import UnionFind, pick_elements
 from llmcer.similarity import get_most_simi, is_act
-from llmcer.clustering import mdg_check
+from llmcer.clustering import mdg_check, find_misclustered_records
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+# When OPENAI_BASE_URL is set (OpenAI-compatible gateway), route through it;
+# otherwise use the official api.openai.com endpoint.
+if OPENAI_BASE_URL:
+    client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
+else:
+    client = OpenAI(api_key=OPENAI_API_KEY)
+
+
+def _parse_clusters(content):
+    """Parse the LLM's 2D-list reply into a list of integer clusters."""
+    content = content.replace('\n', '').replace(' ', '')
+    content_cleaned = re.sub(r"[^\d\[\],]", "", content)
+    content_cleaned = re.sub(r",\s*]", "]", content_cleaned)
+    content_cleaned = re.sub(r",+", ",", content_cleaned)
+    matches = re.findall(r'\[([^\[\]]*?)\]', content_cleaned)
+    result = []
+    for match in matches:
+        m = match.strip()
+        if not m:
+            continue
+        sep = ',' if ',' in m else None
+        parts = m.split(sep) if sep else m.split()
+        try:
+            result.append([int(p) for p in parts if p != ''])
+        except ValueError:
+            continue
+    return result
+
+
+def _call_llm_classify(record_ids, df):
+    """One LLM in-context-clustering call over `record_ids`. Returns (clusters, stats)."""
+    prompt = get_prompt_from_indices(record_ids, df)
+    start = time.time()
+    completion = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        temperature=0,
+        messages=[
+            {"role": "system",
+             "content": "You are a worker specialize in clustering and classification within Entity Resolution."},
+            {"role": "user", "content": PRE_PROMPT_CLASSIFY + prompt},
+        ],
+    )
+    elapsed = time.time() - start
+    clusters = _parse_clusters(completion.choices[0].message.content)
+    stats = dict(
+        api_calls=1,
+        time=elapsed,
+        tokens=completion.usage.total_tokens,
+        in_tokens=completion.usage.prompt_tokens,
+        out_tokens=completion.usage.completion_tokens,
+    )
+    return clusters, stats
+
+
+def _ensure_complete(record_ids, clusters):
+    """Append any record the LLM dropped as its own singleton cluster."""
+    seen = set()
+    for c in clusters:
+        seen.update(c)
+    for r in record_ids:
+        if r not in seen:
+            clusters.append([r])
+    return clusters
+
+
+def in_context_cluster(record_ids, df, similarity_matrix, max_regen=2):
+    """
+    In-context cluster a single record set with the Misclustering Detection
+    Guardrail and record-set regeneration (paper Algorithm 4 lines 3-5, 8-10).
+
+    The LLM clusters the record set; MDG (Algorithm 2, Definition 1) checks the
+    result. If MDG flags misclustered records, instead of re-issuing the
+    identical prompt (which a temperature-0 LLM answers identically), we
+    REGENERATE the record set: each flagged record is relocated immediately
+    after the cluster it is most inter-similar to, producing a more
+    sequentially-ordered record set, and the LLM re-clusters that. This is the
+    "Record Set Regeneration" described in Section 5.2.
+
+    Returns (clusters, stats) with clusters a list of lists of record ids.
+    """
+    stats = dict(api_calls=0, time=0.0, tokens=0, in_tokens=0, out_tokens=0, mdg_fails=0)
+
+    def _acc(s):
+        for k in ('api_calls', 'time', 'tokens', 'in_tokens', 'out_tokens'):
+            stats[k] += s.get(k, 0)
+
+    order = list(record_ids)
+    clusters = []
+    for attempt in range(max_regen + 1):
+        clusters, s = _call_llm_classify(order, df)
+        _acc(s)
+        clusters = _ensure_complete(order, clusters)
+
+        if mdg_check(clusters, similarity_matrix):
+            return clusters, stats
+
+        # MDG rejected the clustering -> regenerate the record set.
+        stats['mdg_fails'] += 1
+        if attempt == max_regen:
+            break
+        order = _regenerate_order(clusters, similarity_matrix)
+
+    return clusters, stats
+
+
+def _regenerate_order(clusters, similarity_matrix):
+    """
+    Produce a new record ordering by relocating each misclustered record
+    immediately after the cluster it is most inter-similar to (Algorithm 4
+    lines 5 & 10 / Section 5.2 "Record Set Regeneration").
+    """
+    offenders = find_misclustered_records(clusters, similarity_matrix)
+    moved = {rec for (_src, rec, _dst) in offenders}
+
+    # Lay clusters out sequentially; drop the offenders from their current spot.
+    order = []
+    for c in clusters:
+        for r in c:
+            if r not in moved:
+                order.append(r)
+
+    # Re-insert each offender right after the most inter-similar placed record.
+    for (_src, rec, _dst) in offenders:
+        if not order:
+            order.append(rec)
+            continue
+        best_pos, best_sim = 0, -float('inf')
+        for i, placed in enumerate(order):
+            s = similarity_matrix[rec][placed]
+            if s > best_sim:
+                best_sim, best_pos = s, i
+        order.insert(best_pos + 1, rec)
+
+    return order
 
 def process_sampled_ids(df, sample_ids_list):
     execution_time = 0

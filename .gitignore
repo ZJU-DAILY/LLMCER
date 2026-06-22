@@ -6,3 +6,9 @@ __pycache__/
 *.pyc
 .DS_Store
 final_results.txt
+
+# Local environment / secrets -- NEVER commit the API key.
+.env
+.venv/
+venv/
+issue_experiments/results/*.txt

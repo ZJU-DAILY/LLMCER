@@ -20,15 +20,21 @@ def get_prompt_from_indices(indices, df):
     for idx in indices:
         try:
             row = df.iloc[idx]
-            # Use the actual ID from the row if available, otherwise use the index
-            r_id = row[id_col] if id_col else idx
-            
+            # IMPORTANT: the whole pipeline (vectors, similarity matrix, NRS, MDG,
+            # CMR) works in POSITIONAL-INDEX space. The number we show the LLM is
+            # the one it echoes back and that we parse into cluster members, so it
+            # must be the positional index -- not the dataset's own ID column --
+            # otherwise parsed members would not index the similarity matrix.
+            # For the bundled datasets the ID column is 0-based contiguous, so the
+            # two coincide; using `idx` keeps it correct even when they don't.
+            r_id = idx
+
             parts = [str(row[col]) for col in columns]
             rec_str = f"Record {r_id}: " + ",".join(parts)
             lines.append(rec_str)
         except IndexError:
             continue
-            
+
     return '\n'.join(lines)
 
 def get_data_from_indices(indices, df):
@@ -107,33 +113,36 @@ def get_ground_truth(file_path):
             return []
 
     # 3. Handle .csv files (Pairs -> UnionFind)
-    # Legacy support / General CSV support
+    # The first two columns are an (id1, id2) match pair. The file MAY or MAY NOT
+    # have a header (e.g. cora/gt.csv is headerless: "987,990"), so we detect it
+    # by checking whether the first row parses as a pair of integers. Reading a
+    # headerless file with pandas' default header=0 silently drops the first
+    # pair, which corrupts the ground truth.
     elif file_path.endswith('.csv'):
-        try:
-            # Try reading with pandas first for robustness
+        rows = []
+        for enc in ('utf-8', 'MacRoman', 'latin-1'):
             try:
-                df = pd.read_csv(file_path, encoding='MacRoman')
+                with open(file_path, newline='', encoding=enc) as csvfile:
+                    rows = list(csv.reader(csvfile, delimiter=','))
+                break
             except UnicodeDecodeError:
-                df = pd.read_csv(file_path, encoding='utf-8')
-            
-            if df.shape[1] >= 2:
-                pairs = df.iloc[:, :2].values.tolist()
-                return merge_coordinates(pairs)
-            else:
-                return []
-        except Exception:
-            # Fallback to original csv module logic if pandas fails (unlikely)
-            data = []
-            with open(file_path, newline='', encoding='MacRoman') as csvfile:
-                reader = csv.reader(csvfile, delimiter=',')
-                try:
-                    next(reader)  # Skip header
-                except StopIteration:
-                    pass
-                for row in reader:
-                    if len(row) >= 2:
-                        data.append(row[:2])
-            return merge_coordinates(data)
+                continue
+        if not rows:
+            return []
+
+        def _is_int_pair(row):
+            if len(row) < 2:
+                return False
+            try:
+                int(row[0]); int(row[1])
+                return True
+            except (ValueError, TypeError):
+                return False
+
+        # If the first row is NOT an integer pair, treat it as a header.
+        start = 0 if _is_int_pair(rows[0]) else 1
+        data = [r[:2] for r in rows[start:] if _is_int_pair(r)]
+        return merge_coordinates(data)
 
     else:
         print(f"Warning: Unsupported ground truth file format: {file_path}")
