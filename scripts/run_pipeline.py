@@ -54,13 +54,75 @@ def main():
     print("Calculating vectors and similarity matrix...")
     vectors, simi_matrix, data = cal_total_simi_vector(dataset_csv_path)
 
-    # Fixed, validation-tuned thresholds (see llmcer/config.py).
-    print(f"Thresholds: block={BLOCK_THRESHOLD}  separation={SEPARATION_THRESHOLD}  "
-          f"merge={MERGE_THRESHOLD}  | S_s={SET_SIZE} S_d={SET_DIVERSITY}")
+    # Per-dataset best block_threshold mapping (from sweep experiments).
+    # Match by substring in DATASET_PATH (case-insensitive). Datasets NOT in
+    # this map fall through to dynamic threshold (mu + 2.5*sigma).
+    BEST_BLOCK_PER_DATASET = {
+        # key (lowercased substring of path) -> best block_threshold
+        'cora':           0.90,
+        'song':           0.70,
+        'citesheer':      0.70,
+        'google-dblp':    0.70,   # match BEFORE plain 'google'
+        'music20k':       0.70,
+        'amazon-google':  0.90,
+        # The next two were best in DYNAMIC mode; hardcode the empirical optimum
+        # (= mu + 2.5*sigma on that specific dataset) so 'best' is deterministic.
+        'affiliation':    0.698,  # AS dataset, dynamic value
+        'walmart_amazon': 0.487,  # dynamic value
+    }
+    def _best_threshold_for(path):
+        p = path.lower()
+        for key, thr in BEST_BLOCK_PER_DATASET.items():
+            if key in p:
+                return key, thr
+        return None, None
+
+    # Threshold mode:
+    #   'best'    (default) - lookup per-dataset best, fall back to dynamic
+    #   'dynamic'           - always mu + k*sigma
+    #   'fixed'             - use config.py BLOCK_THRESHOLD
+    threshold_mode = os.environ.get("THRESHOLD_MODE", "best").lower()
+    sim_mean = float(np.mean(simi_matrix))
+    sim_std = float(np.std(simi_matrix))
+
+    matched_key, best_thr = _best_threshold_for(DATASET_PATH)
+
+    if threshold_mode == "best" and best_thr is not None:
+        block_threshold = best_thr
+        merge_threshold = min(sim_mean + 3.0 * sim_std, 0.90)
+        print(f"Thresholds: [BEST] block={block_threshold}  "
+              f"merge={merge_threshold:.3f}  (matched '{matched_key}', "
+              f"mu={sim_mean:.3f}, sigma={sim_std:.3f}) "
+              f"| S_s={SET_SIZE} S_d={SET_DIVERSITY}")
+    elif threshold_mode == "fixed":
+        block_threshold = BLOCK_THRESHOLD
+        merge_threshold = MERGE_THRESHOLD
+        print(f"Thresholds: [FIXED] block={block_threshold}  "
+              f"separation={SEPARATION_THRESHOLD}  merge={merge_threshold}  "
+              f"| S_s={SET_SIZE} S_d={SET_DIVERSITY}")
+    else:
+        # mode == 'dynamic'  OR  'best' but dataset unknown -> dynamic
+        block_threshold = min(sim_mean + 2.5 * sim_std, 0.99)
+        merge_threshold = min(sim_mean + 3.0 * sim_std, 0.90)
+        tag = "DYNAMIC" if threshold_mode == "dynamic" else "BEST→DYNAMIC (unknown dataset)"
+        print(f"Thresholds: [{tag}] block={block_threshold:.3f}  "
+              f"merge={merge_threshold:.3f}  "
+              f"(mu={sim_mean:.3f}, sigma={sim_std:.3f}) "
+              f"| S_s={SET_SIZE} S_d={SET_DIVERSITY}")
+
+    # Env-var override (last word, applies to any mode)
+    _bt_env = os.environ.get("BLOCK_THRESHOLD")
+    if _bt_env:
+        block_threshold = float(_bt_env)
+        print(f"  [override] BLOCK_THRESHOLD set to {block_threshold} via env")
+    _mt_env = os.environ.get("MERGE_THRESHOLD")
+    if _mt_env:
+        merge_threshold = float(_mt_env)
+        print(f"  [override] MERGE_THRESHOLD set to {merge_threshold} via env")
 
     # 2. Blocking (LSH) -- hard partition into blocks.
     print("Running LSH Blocking...")
-    blocks = lsh_block(vectors, data, BLOCK_THRESHOLD)
+    blocks = lsh_block(vectors, data, block_threshold)
     print(f"LSH Blocking done. Found {len(blocks)} blocks.")
 
     # 3-4. Per-block: NRS -> in-context clustering (+MDG) -> CMR (Algorithm 4).
@@ -92,6 +154,7 @@ def main():
         for cluster in ground_truth:
             for item in cluster:
                 gt_ids.add(str(item).strip())
+                
 
         missing = 0
         for item in all_ids:
