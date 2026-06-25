@@ -75,7 +75,7 @@ The repository includes several benchmark datasets for Entity Resolution:
 Clone the repository and install the required dependencies:
 
 ```bash
-git clone https://github.com/your-repo/LLMCER.git
+git clone https://github.com/ZJU-DAILY/LLMCER.git
 cd LLMCER
 pip install -r requirements.txt
 ```
