@@ -20,6 +20,18 @@ if OPENAI_BASE_URL:
 else:
     client = OpenAI(api_key=OPENAI_API_KEY)
 
+# Monkey-patch chat.completions.create to inject reasoning_effort='none'.
+# NO RETRY (retry was observed to extend wall time massively without saving runs
+# — once packyapi enters bad state, it stays bad, retries just waste time).
+_orig_create = client.chat.completions.create
+
+def _create_no_thinking(**kwargs):
+    if 'reasoning_effort' not in kwargs:
+        kwargs['reasoning_effort'] = 'none'
+    return _orig_create(**kwargs)
+
+client.chat.completions.create = _create_no_thinking
+
 
 def _parse_clusters(content):
     """Parse the LLM's 2D-list reply into a list of integer clusters."""
