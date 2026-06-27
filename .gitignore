@@ -13,3 +13,7 @@ final_results.txt
 venv/
 # NOTE: experiment logs under issue_experiments/results/ ARE committed
 # (reproducible record of the runs). Do not ignore them.
+
+# Local-only reviewer write-ups (kept out of the repo by request).
+WRITEUP_issue2_blocking_recall.md
+WRITEUP_issue3_batch_ordering.md
