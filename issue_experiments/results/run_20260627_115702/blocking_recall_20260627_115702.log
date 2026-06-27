@@ -1,0 +1,71 @@
+# experiment: blocking_recall
+# command: C:\Users\haitong\Desktop\LLMCER\.venv\Scripts\python.exe C:\Users\haitong\Desktop\LLMCER\issue_experiments\blocking_recall.py --no-sweep
+# started: 20260627_115702
+
+C:\Users\haitong\Desktop\LLMCER\.venv\Lib\site-packages\lshashpy3\__init__.py:1: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+========================================================================
+cora
+  embedding records with SBERT ...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|¨€¨€¨€¨€¨€¨€¨€¨€¨€¨€| 103/103 [00:00<00:00, 51143.99it/s]
+  records=1295  GT clusters(non-singleton)=93  true pairs=17184
+lsh done
+  b_t=0.800  recall(PC)=0.8918 <-- pipeline best
+========================================================================
+citeseer
+  embedding records with SBERT ...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|¨€¨€¨€¨€¨€¨€¨€¨€¨€¨€| 103/103 [00:00<00:00, 8819.48it/s]
+  records=9127  GT clusters(non-singleton)=2496  true pairs=13477
+lsh done
+  b_t=0.700  recall(PC)=0.8783 <-- pipeline best
+========================================================================
+google-DBLP
+  embedding records with SBERT ...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|¨€¨€¨€¨€¨€¨€¨€¨€¨€¨€| 103/103 [00:00<00:00, 10419.00it/s]
+  records=7626  GT clusters(non-singleton)=2351  true pairs=13763
+lsh done
+  b_t=0.500  recall(PC)=0.9043 <-- pipeline best
+========================================================================
+music20K
+  embedding records with SBERT ...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|¨€¨€¨€¨€¨€¨€¨€¨€¨€¨€| 103/103 [00:00<00:00, 14770.19it/s]
+  records=19375  GT clusters(non-singleton)=5000  true pairs=16250
+lsh done
+  b_t=0.400  recall(PC)=0.9377 <-- pipeline best
+========================================================================
+sigmod
+  embedding records with SBERT ...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|¨€¨€¨€¨€¨€¨€¨€¨€¨€¨€| 103/103 [00:00<00:00, 11290.33it/s]
+  records=12007  GT clusters(non-singleton)=1484  true pairs=144440
+lsh done
+  b_t=0.800  recall(PC)=0.9531 <-- pipeline best
+========================================================================
+song
+  embedding records with SBERT ...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|¨€¨€¨€¨€¨€¨€¨€¨€¨€¨€| 103/103 [00:00<00:00, 11863.61it/s]
+  records=4854  GT clusters(non-singleton)=1195  true pairs=8588
+lsh done
+  b_t=0.300  recall(PC)=0.9110 <-- pipeline best
+========================================================================
+affiliation
+  embedding records with SBERT ...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|¨€¨€¨€¨€¨€¨€¨€¨€¨€¨€| 103/103 [00:00<00:00, 9907.88it/s]
+  records=2260  GT clusters(non-singleton)=330  true pairs=16795
+lsh done
+  b_t=0.400  recall(PC)=0.9036 <-- pipeline best
+
+========================================
+BLOCKING RECALL  (at best b_t per dataset)
+========================================
+Dataset          b_t    Recall
+----------------------------------------
+cora           0.800    0.8918
+citeseer       0.700    0.8783
+google-DBLP    0.500    0.9043
+music20K       0.400    0.9377
+sigmod         0.800    0.9531
+song           0.300    0.9110
+affiliation    0.400    0.9036
+========================================
+Recall = Pair Completeness: fraction of true matching pairs kept in a block.
+End-to-end recall is upper-bounded by this value.

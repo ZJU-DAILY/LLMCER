@@ -1,6 +1,6 @@
 # experiment: test_issues
 # command: C:\Users\haitong\Desktop\LLMCER\.venv\Scripts\python.exe C:\Users\haitong\Desktop\LLMCER\issue_experiments\test_issues.py
-# started: 20260627_112820
+# started: 20260627_115702
 
 C:\Users\haitong\Desktop\LLMCER\.venv\Lib\site-packages\lshashpy3\__init__.py:1: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
   import pkg_resources

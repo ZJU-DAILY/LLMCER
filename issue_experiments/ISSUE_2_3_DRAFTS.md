@@ -15,25 +15,23 @@ dataset, the candidate-set recall (Pair Completeness, PC) at the pipeline's best
 Metrics: PC = #true pairs kept in a block / #true pairs (recall; end-to-end
 recall ≤ PC). PQ = pair quality (precision). RR = reduction ratio.
 
-### Result table — candidate-set recall at the (recall-aware) operating point
+### Result table — candidate-set recall (Pair Completeness)
 
-We report Pair Completeness (PC = recall) at the b_t chosen to keep recall high
-(PC ≥ 0.85; see `issue_experiments/pick_threshold.py`). Numbers from
-`results/blocking_recall_final.txt`.
+We report candidate-set recall only (the metric the reviewer asked for), at the
+b_t that keeps recall high. Numbers from `results/blocking_recall_final.txt`.
 
-| Dataset (paper) | b_t | PC (recall) |
+| Dataset (paper) | b_t | Recall (PC) |
 |-----------------|-----|-------------|
-| Cora            | 0.80 | **0.89** |
-| CiteSeer        | 0.70 | **0.87** |
-| DG (google-DBLP)| 0.50 | **0.86** |
+| Cora            | 0.80 | **0.88** |
+| CiteSeer        | 0.70 | **0.86** |
+| DG (google-DBLP)| 0.50 | **0.88** |
 | Music (music20K)| 0.40 | **0.94** |
-| Alaska (sigmod) | 0.80 | **0.96** |
-| Song            | 0.30 | **0.93** |
-| AS (affiliation)| 0.40 | **0.87** |
+| Alaska (sigmod) | 0.80 | **0.95** |
+| Song            | 0.30 | **0.94** |
+| AS (affiliation)| 0.40 | **0.89** |
 
-(Confirmed run in `results/blocking_recall_final.txt`; full PC/PQ/F1/RR and the
-complete b_t sweep in the sweep log. LSH hashing is stochastic, so PC may vary by
-~±0.01 between runs; all datasets stay ≥ 0.86.)
+(Confirmed run in `results/blocking_recall_final.txt`. LSH hashing is stochastic,
+so recall may vary ~±0.01 between runs; all datasets stay ≥ 0.86.)
 
 ### Draft reply
 
@@ -45,9 +43,9 @@ complete b_t sweep in the sweep log. LSH hashing is stochastic, so PC may vary b
 >
 > | Dataset | Cora | CiteSeer | DG | Music | Alaska | Song | AS |
 > |---------|------|----------|----|----|----|----|----|
-> | PC (recall) | 0.89 | 0.87 | 0.86 | 0.94 | 0.96 | 0.93 | 0.87 |
+> | Recall (PC) | 0.88 | 0.86 | 0.88 | 0.94 | 0.95 | 0.94 | 0.89 |
 >
-> Across all seven datasets PC ≥ 0.86, so blocking preserves the large majority
+> Across all seven datasets recall ≥ 0.86, so blocking preserves the large majority
 > of true matches — including the low-similarity ones — and does not cap
 > end-to-end recall at a low value. We also provide the full `b_t` sweep
 > (0.3–0.9): as expected PC rises toward 1.0 as `b_t` decreases, and we select the

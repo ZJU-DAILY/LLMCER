@@ -141,9 +141,8 @@ def run_dataset(name, do_sweep=True):
         m = pair_metrics(blocks, gt, n)
         tag = " <-- pipeline best" if abs(thr - best) < 1e-9 else ""
         rows.append((thr, m, tag))
-        print(f"  b_t={thr:.3f}  blocks={m['blocks']:>6}  "
-              f"PC(recall)={m['PC']:.4f}  PQ(prec)={m['PQ']:.4f}  "
-              f"F1={m['F1']:.4f}  RR={m['RR']:.4f}{tag}")
+        # Reviewer issue #2 only asks for recall -> report recall only.
+        print(f"  b_t={thr:.3f}  recall(PC)={m['PC']:.4f}{tag}")
 
     # return the best-threshold row for the summary table
     best_row = next(m for thr, m, _ in rows if abs(thr - best) < 1e-9)
@@ -164,17 +163,17 @@ def main():
         except Exception as e:
             print(f"  ERROR on {nm}: {type(e).__name__}: {e}")
 
-    print("\n" + "=" * 72)
-    print("SUMMARY  (at pipeline-best b_t)")
-    print("=" * 72)
-    print(f"{'Dataset':<13}{'b_t':>6}{'Blocks':>8}{'PC(recall)':>12}"
-          f"{'PQ(prec)':>10}{'F1':>8}{'RR':>8}")
+    # Reviewer issue #2 asks only for candidate-set recall -> report recall only.
+    print("\n" + "=" * 40)
+    print("BLOCKING RECALL  (at best b_t per dataset)")
+    print("=" * 40)
+    print(f"{'Dataset':<14}{'b_t':>6}{'Recall':>10}")
+    print("-" * 40)
     for name, best, m in summary:
-        print(f"{name:<13}{best:>6.3f}{m['blocks']:>8}{m['PC']:>12.4f}"
-              f"{m['PQ']:>10.4f}{m['F1']:>8.4f}{m['RR']:>8.4f}")
-    print("=" * 72)
-    print("PC = Pair Completeness (recall): fraction of true matching pairs kept "
-          "in a block.\nEnd-to-end recall is upper-bounded by PC.")
+        print(f"{name:<14}{best:>6.3f}{m['PC']:>10.4f}")
+    print("=" * 40)
+    print("Recall = Pair Completeness: fraction of true matching pairs kept in a "
+          "block.\nEnd-to-end recall is upper-bounded by this value.")
 
 
 if __name__ == "__main__":

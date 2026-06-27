@@ -1,0 +1,51 @@
+========================================================================
+cora
+  embedding records with SBERT ...
+  records=1295  GT clusters(non-singleton)=93  true pairs=17184
+  b_t=0.800  recall(PC)=0.8834 <-- pipeline best
+========================================================================
+citeseer
+  embedding records with SBERT ...
+  records=9127  GT clusters(non-singleton)=2496  true pairs=13477
+  b_t=0.700  recall(PC)=0.8606 <-- pipeline best
+========================================================================
+google-DBLP
+  embedding records with SBERT ...
+  records=7626  GT clusters(non-singleton)=2351  true pairs=13763
+  b_t=0.500  recall(PC)=0.8783 <-- pipeline best
+========================================================================
+music20K
+  embedding records with SBERT ...
+  records=19375  GT clusters(non-singleton)=5000  true pairs=16250
+  b_t=0.400  recall(PC)=0.9404 <-- pipeline best
+========================================================================
+sigmod
+  embedding records with SBERT ...
+  records=12007  GT clusters(non-singleton)=1484  true pairs=144440
+  b_t=0.800  recall(PC)=0.9549 <-- pipeline best
+========================================================================
+song
+  embedding records with SBERT ...
+  records=4854  GT clusters(non-singleton)=1195  true pairs=8588
+  b_t=0.300  recall(PC)=0.9414 <-- pipeline best
+========================================================================
+affiliation
+  embedding records with SBERT ...
+  records=2260  GT clusters(non-singleton)=330  true pairs=16795
+  b_t=0.400  recall(PC)=0.8860 <-- pipeline best
+
+========================================
+BLOCKING RECALL  (at best b_t per dataset)
+========================================
+Dataset          b_t    Recall
+----------------------------------------
+cora           0.800    0.8834
+citeseer       0.700    0.8606
+google-DBLP    0.500    0.8783
+music20K       0.400    0.9404
+sigmod         0.800    0.9549
+song           0.300    0.9414
+affiliation    0.400    0.8860
+========================================
+Recall = Pair Completeness: fraction of true matching pairs kept in a block.
+End-to-end recall is upper-bounded by this value.

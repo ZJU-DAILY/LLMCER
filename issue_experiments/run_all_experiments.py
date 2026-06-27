@@ -34,8 +34,8 @@ EXPERIMENTS = [
     ("check_datasets",   ["check_datasets.py"],                 False),
     ("test_issues",      ["test_issues.py"],                    False),
     ("test_end_to_end",  ["test_end_to_end.py"],                False),
-    ("blocking_recall",  ["blocking_recall.py"],                False),  # full sweep
-    ("pick_threshold",   ["pick_threshold.py"],                 False),
+    # blocking recall: report ONLY the best-b_t row per dataset (--no-sweep).
+    ("blocking_recall",  ["blocking_recall.py", "--no-sweep"],  False),
     # real-LLM experiment, skipped unless --with-llm:
     ("real_cora",        ["test_real_dataset.py", "--dataset", "cora", "--records", "40"], True),
 ]
@@ -64,16 +64,18 @@ def main():
                     help="also run real-LLM experiments (needs OPENAI_API_KEY)")
     args = ap.parse_args()
 
-    os.makedirs(RESULTS, exist_ok=True)
     # NOTE: argless datetime.now() is fine in a plain script (only forbidden in
     # Workflow scripts); we need a real wall-clock stamp for the log filenames.
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Each session gets its own folder so logs are packaged together.
+    session_dir = os.path.join(RESULTS, f"run_{ts}")
+    os.makedirs(session_dir, exist_ok=True)
 
     has_key = bool(os.environ.get("OPENAI_API_KEY")) or os.path.exists(
         os.path.join(ROOT, ".env"))
 
     manifest = dict(session=ts, python=PYTHON, runs=[])
-    print(f"=== Experiment session {ts} ===")
+    print(f"=== Experiment session {ts}  ->  {os.path.relpath(session_dir, ROOT)} ===")
     for name, script_args, needs_llm in EXPERIMENTS:
         if args.only and name != args.only:
             continue
@@ -85,9 +87,9 @@ def main():
             print(f"  skipping {name} (no OPENAI_API_KEY / .env)")
             manifest["runs"].append(dict(name=name, skipped="no api key"))
             continue
-        manifest["runs"].append(run_one(name, script_args, RESULTS, ts))
+        manifest["runs"].append(run_one(name, script_args, session_dir, ts))
 
-    manifest_path = os.path.join(RESULTS, "manifest.json")
+    manifest_path = os.path.join(session_dir, "manifest.json")
     with open(manifest_path, "w", encoding="utf-8") as fh:
         json.dump(manifest, fh, indent=2)
 

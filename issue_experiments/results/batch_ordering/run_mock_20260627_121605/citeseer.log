@@ -1,0 +1,20 @@
+# batch task-ordering | dataset=citeseer mode=mock tasks=3 records~60 perms=5
+  Task T0: 9 records [8694, 8689, 1135, 3411, 3410, 1446, 1574, 1578, 3349]
+  Task T1: 9 records [1781, 1688, 2291, 2288, 3408, 3801, 1447, 1575, 1136]
+  Task T2: 9 records [4452, 4450, 1449, 1448, 3352, 3351, 3350, 3803, 1137]
+
+permutation  order                      ACC      FP
+---------------------------------------------------
+similarity   [0, 1, 2]               0.7037  0.8261
+reverse      [2, 1, 0]               0.7037  0.8261
+random1      [1, 0, 2]               0.7037  0.8261
+random2      [0, 1, 2]               0.7037  0.8261
+random3      [0, 2, 1]               0.7037  0.8261
+random4      [2, 0, 1]               0.7037  0.8261
+random5      [2, 1, 0]               0.7037  0.8261
+---------------------------------------------------
+ACC  mean=0.7037  std=0.0000  range=[0.7037,0.7037]
+FP   mean=0.8261  std=0.0000
+ARI_stability (mean pairwise ARI between orderings) = 1.0000
+pair flip_rate vs similarity ordering = 0.0000
+Verdict: task order IRRELEVANT (ARI~1, std~0)

@@ -1,0 +1,38 @@
+{
+  "session": "20260627_115702",
+  "python": ".venv/Scripts/python.exe",
+  "runs": [
+    {
+      "name": "check_datasets",
+      "command": "issue_experiments/check_datasets.py",
+      "log": "issue_experiments/results/run_20260627_115702/check_datasets_20260627_115702.log",
+      "exit_code": 0,
+      "seconds": 0.3
+    },
+    {
+      "name": "test_issues",
+      "command": "issue_experiments/test_issues.py",
+      "log": "issue_experiments/results/run_20260627_115702/test_issues_20260627_115702.log",
+      "exit_code": 0,
+      "seconds": 7.2
+    },
+    {
+      "name": "test_end_to_end",
+      "command": "issue_experiments/test_end_to_end.py",
+      "log": "issue_experiments/results/run_20260627_115702/test_end_to_end_20260627_115702.log",
+      "exit_code": 0,
+      "seconds": 7.7
+    },
+    {
+      "name": "blocking_recall",
+      "command": "issue_experiments/blocking_recall.py --no-sweep",
+      "log": "issue_experiments/results/run_20260627_115702/blocking_recall_20260627_115702.log",
+      "exit_code": 0,
+      "seconds": 321.8
+    },
+    {
+      "name": "real_cora",
+      "skipped": "needs --with-llm"
+    }
+  ]
+}

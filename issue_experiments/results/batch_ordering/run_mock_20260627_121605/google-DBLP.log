@@ -1,0 +1,20 @@
+# batch task-ordering | dataset=google-DBLP mode=mock tasks=3 records~60 perms=5
+  Task T0: 9 records [5367, 5814, 57, 293, 586, 3496, 7426, 638, 9]
+  Task T1: 9 records [2301, 6661, 447, 804, 3902, 671, 3274, 848, 837]
+  Task T2: 9 records [7409, 6524, 1374, 5350, 1194, 1106, 6328, 1153, 993]
+
+permutation  order                      ACC      FP
+---------------------------------------------------
+similarity   [0, 2, 1]               0.8148  0.8980
+reverse      [1, 2, 0]               0.8148  0.8980
+random1      [0, 2, 1]               0.8148  0.8980
+random2      [2, 0, 1]               0.8148  0.8980
+random3      [2, 1, 0]               0.8148  0.8980
+random4      [1, 2, 0]               0.8148  0.8980
+random5      [1, 0, 2]               0.8148  0.8980
+---------------------------------------------------
+ACC  mean=0.8148  std=0.0000  range=[0.8148,0.8148]
+FP   mean=0.8980  std=0.0000
+ARI_stability (mean pairwise ARI between orderings) = 1.0000
+pair flip_rate vs similarity ordering = 0.0000
+Verdict: task order IRRELEVANT (ARI~1, std~0)

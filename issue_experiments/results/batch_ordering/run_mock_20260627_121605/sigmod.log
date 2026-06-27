@@ -1,0 +1,20 @@
+# batch task-ordering | dataset=sigmod mode=mock tasks=3 records~60 perms=5
+  Task T0: 9 records [3392, 3391, 1531, 13, 1530, 6374, 6377, 6362, 6363]
+  Task T1: 9 records [3388, 3389, 1533, 1532, 1534, 6364, 6397, 6381, 6365]
+  Task T2: 9 records [6398, 6400, 6382, 6383, 6372, 6373, 6366, 3390, 3963]
+
+permutation  order                      ACC      FP
+---------------------------------------------------
+similarity   [0, 1, 2]               0.4444  0.6154
+reverse      [2, 1, 0]               0.4444  0.6154
+random1      [0, 2, 1]               0.4444  0.6154
+random2      [2, 0, 1]               0.4444  0.6154
+random3      [2, 1, 0]               0.4444  0.6154
+random4      [1, 2, 0]               0.4444  0.6154
+random5      [1, 0, 2]               0.4444  0.6154
+---------------------------------------------------
+ACC  mean=0.4444  std=0.0000  range=[0.4444,0.4444]
+FP   mean=0.6154  std=0.0000
+ARI_stability (mean pairwise ARI between orderings) = 1.0000
+pair flip_rate vs similarity ordering = 0.0000
+Verdict: task order IRRELEVANT (ARI~1, std~0)
