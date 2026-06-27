@@ -1,0 +1,21 @@
+# batch task-ordering | dataset=cora mode=real tasks=3 records~60 perms=5
+  blocking: threshold=0.9 (cora) -> 139 blocks, 91 with >=2 records; picking top 3 as INDEPENDENT tasks (sizes=[62, 62, 52])
+  Task T0 (from block of 62 recs): 9 records spanning 3 GT entities [305, 313, 312, 285, 1256, 414, 406, 415, 411]
+  Task T1 (from block of 62 recs): 9 records spanning 2 GT entities [750, 714, 753, 732, 987, 984, 992, 990, 991]
+  Task T2 (from block of 52 recs): 9 records spanning 2 GT entities [1113, 1107, 1105, 1128, 1131, 1151, 1148, 1149, 1150]
+
+permutation  order                      ACC      FP
+---------------------------------------------------
+similarity   [0, 1, 2]               0.9259  0.9630
+reverse      [2, 1, 0]               0.9259  0.9630
+random1      [2, 1, 0]               0.9259  0.9630
+random2      [1, 2, 0]               0.9259  0.9630
+random3      [1, 0, 2]               0.9259  0.9630
+random4      [0, 1, 2]               0.8519  0.9244
+random5      [0, 2, 1]               0.9630  0.9811
+---------------------------------------------------
+ACC  mean=0.9206  std=0.0309  range=[0.8519,0.9630]
+FP   mean=0.9601  std=0.0158
+ARI_stability (mean pairwise ARI between orderings) = 0.9675
+pair flip_rate vs similarity ordering = 0.0256
+Verdict: task order has a MEASURABLE effect — report it

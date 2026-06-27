@@ -1,0 +1,21 @@
+# batch task-ordering | dataset=google-DBLP mode=real tasks=3 records~60 perms=5
+  blocking: threshold=0.7 (google-dblp) -> 2929 blocks, 1631 with >=2 records; picking top 3 as INDEPENDENT tasks (sizes=[591, 204, 180])
+  Task T0 (from block of 591 recs): 9 records spanning 8 GT entities [3011, 1760, 3, 1250, 1129, 2210, 7199, 3476, 1265]
+  Task T1 (from block of 204 recs): 9 records spanning 6 GT entities [7320, 7550, 7407, 1790, 17, 4351, 1086, 1157, 3631]
+  Task T2 (from block of 180 recs): 9 records spanning 5 GT entities [6432, 157, 65, 3094, 5589, 6171, 4771, 4312, 3565]
+
+permutation  order                      ACC      FP
+---------------------------------------------------
+similarity   [0, 1, 2]               0.9630  0.9811
+reverse      [2, 1, 0]               0.9630  0.9811
+random1      [2, 1, 0]               0.9630  0.9811
+random2      [1, 2, 0]               1.0000  1.0000
+random3      [1, 0, 2]               1.0000  1.0000
+random4      [0, 1, 2]               0.9630  0.9811
+random5      [0, 2, 1]               0.9630  0.9811
+---------------------------------------------------
+ACC  mean=0.9735  std=0.0167  range=[0.9630,1.0000]
+FP   mean=0.9865  std=0.0085
+ARI_stability (mean pairwise ARI between orderings) = 0.9742
+pair flip_rate vs similarity ordering = 0.0028
+Verdict: task order has a MEASURABLE effect — report it

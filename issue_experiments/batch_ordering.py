@@ -99,9 +99,16 @@ def build_batched_prompt(task_order, task_records, df):
 def call_real_batch(prompt):
     from llmcer.llm_interaction import client
     from llmcer.config import OPENAI_MODEL
+    # NOTE: temperature=0 was REMOVED. The packyapi gateway's gpt-5.4-mini is a
+    # reasoning-style model that rejects temperature=0 (returns HTTP 400
+    # "bad_response_status_code"); the monkey-patched client already injects
+    # reasoning_effort='none' for the lowest-variance decoding available here.
+    # CAVEAT: this model is non-deterministic (the SAME prompt yields different
+    # clusterings across repeats), so ARI_stab < 1 may reflect run-to-run noise
+    # rather than a pure task-order effect. See NOTES_determinism.md in the run
+    # folder. (Minimal-change option per experimenter decision.)
     completion = client.chat.completions.create(
         model=OPENAI_MODEL,
-        temperature=0,
         messages=[
             {"role": "system", "content": "You are an expert in Entity Resolution clustering."},
             {"role": "user", "content": prompt},
@@ -195,7 +202,8 @@ def run_dataset(name, args, session_dir):
     import numpy as np
     from llmcer.data_utils import get_ground_truth
     from llmcer.vectorization import cal_total_simi_vector
-    from llmcer.record_set import create_record_sets
+    from llmcer.record_set import next_record_set
+    from llmcer.clustering import lsh_block
     from llmcer.metrics import calculate_acc, calculate_fp_measure
     from sklearn.metrics import adjusted_rand_score
 
@@ -226,26 +234,58 @@ def run_dataset(name, args, session_dir):
         if r not in entity_of:
             entity_of[r] = nxt; nxt += 1
 
-    rng = np.random.RandomState(0)
-    order = list(range(len(full_gt)))
-    rng.shuffle(order)
-    keep = set()
-    for i in order:
-        if len(keep) >= args.records:
+    # ----- Faithful task construction: REAL LSH blocking + NRS (paper method) ----
+    # The earlier version carved tasks from a random ground-truth sample, which
+    # could degenerate (e.g. cora: the whole 27-record sample was ONE entity,
+    # capping ACC at ~0.33) and contradicted this experiment's own premise that
+    # the batched tasks are INDEPENDENT. We now reproduce the main pipeline:
+    #   lsh_block(threshold) -> pick ONE NRS record set from each of several
+    #   DIFFERENT blocks.
+    # pipeline.py guarantees records in different blocks are never compared or
+    # merged (hard partition), so batching their record sets as independent
+    # tasks is faithful to the method AND removes the cross-task-merge penalty.
+    # block_threshold follows run_pipeline's default 'best' mode (per-dataset
+    # table, else dynamic mu+2.5sigma), overridable via BLOCK_THRESHOLD env.
+    BEST_BLOCK = {'cora': 0.90, 'song': 0.70, 'citesheer': 0.70,
+                  'google-dblp': 0.70, 'music20k': 0.70, 'amazon-google': 0.90,
+                  'affiliation': 0.698, 'walmart_amazon': 0.487}
+    pl = data_rel.lower()
+    block_threshold, matched = None, None
+    for key, thr in BEST_BLOCK.items():
+        if key in pl:
+            block_threshold, matched = thr, key
             break
-        keep.update(int(r) for r in full_gt[i] if 0 <= int(r) < n_all)
-    block = sorted(keep)
-    if len(block) < args.tasks * 2:
-        out(f"ERROR: sampled block too small ({len(block)}). Increase --records.")
+    if block_threshold is None:                 # not in table -> dynamic (paper)
+        block_threshold = min(float(np.mean(simi)) + 2.5 * float(np.std(simi)), 0.99)
+        matched = f"dynamic mu+2.5sigma"
+    _bt_env = os.environ.get("BLOCK_THRESHOLD")
+    if _bt_env:
+        block_threshold, matched = float(_bt_env), "env override"
+
+    np.random.seed(0)                           # reproducible LSH hash planes
+    blocks = lsh_block(vectors, df, block_threshold)
+    usable = sorted([b for b in blocks if len(b) >= 2], key=lambda b: (-len(b), min(b)))
+    out(f"  blocking: threshold={block_threshold} ({matched}) -> {len(blocks)} blocks, "
+        f"{len(usable)} with >=2 records; picking top {args.tasks} as INDEPENDENT tasks "
+        f"(sizes={[len(b) for b in usable[:args.tasks]]})")
+    if len(usable) < 2:
+        out(f"ERROR: only {len(usable)} usable block(s) (need >=2). Lower BLOCK_THRESHOLD.")
         log.close()
         return None
 
-    record_sets = [rs for rs in create_record_sets(block, vectors, simi, 9, 4) if rs]
-    record_sets = record_sets[:args.tasks]
+    chosen_blocks = usable[:args.tasks]
+    record_sets = []
+    for b in chosen_blocks:
+        rset, _ = next_record_set(b, vectors, simi, 9, 4)   # first NRS record set
+        if rset:
+            record_sets.append(rset)
     task_ids = list(range(len(record_sets)))
     task_records = {t: record_sets[t] for t in task_ids}
     for t in task_ids:
-        out(f"  Task T{t}: {len(task_records[t])} records {task_records[t]}")
+        ents = {entity_of.get(r) for r in task_records[t]}
+        out(f"  Task T{t} (from block of {len(chosen_blocks[t])} recs): "
+            f"{len(task_records[t])} records spanning {len(ents)} GT entities "
+            f"{task_records[t]}")
 
     batch_records = [r for t in task_ids for r in task_records[t]]
     gt_batch = []
@@ -261,7 +301,7 @@ def run_dataset(name, args, session_dir):
     def sim_between(a, b):
         return max(simi[i][j] for i in task_records[a] for j in task_records[b])
 
-    perms = make_permutations(task_ids, sim_between, args.perms, seed_base=len(block))
+    perms = make_permutations(task_ids, sim_between, args.perms, seed_base=len(batch_records))
     oracle = MockBatchOracle(entity_of) if args.mock else None
 
     out("")

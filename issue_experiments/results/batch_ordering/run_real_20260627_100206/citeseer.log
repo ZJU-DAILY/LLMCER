@@ -1,0 +1,21 @@
+# batch task-ordering | dataset=citeseer mode=real tasks=3 records~60 perms=5
+  blocking: threshold=0.7 (citesheer) -> 3002 blocks, 2461 with >=2 records; picking top 3 as INDEPENDENT tasks (sizes=[17, 14, 13])
+  Task T0 (from block of 17 recs): 9 records spanning 3 GT entities [1927, 1928, 1926, 1933, 1932, 3588, 3591, 3675, 3676]
+  Task T1 (from block of 14 recs): 9 records spanning 2 GT entities [959, 963, 964, 958, 1671, 1670, 1668, 1672, 1669]
+  Task T2 (from block of 13 recs): 9 records spanning 2 GT entities [928, 930, 926, 927, 7183, 7184, 7181, 7185, 7186]
+
+permutation  order                      ACC      FP
+---------------------------------------------------
+similarity   [0, 1, 2]               1.0000  1.0000
+reverse      [2, 1, 0]               1.0000  1.0000
+random1      [2, 1, 0]               1.0000  1.0000
+random2      [1, 2, 0]               1.0000  1.0000
+random3      [1, 0, 2]               1.0000  1.0000
+random4      [0, 1, 2]               1.0000  1.0000
+random5      [0, 2, 1]               0.9259  0.9615
+---------------------------------------------------
+ACC  mean=0.9894  std=0.0259  range=[0.9259,1.0000]
+FP   mean=0.9945  std=0.0135
+ARI_stability (mean pairwise ARI between orderings) = 0.9763
+pair flip_rate vs similarity ordering = 0.0171
+Verdict: task order has a MEASURABLE effect — report it
