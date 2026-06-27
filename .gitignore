@@ -11,4 +11,5 @@ final_results.txt
 .env
 .venv/
 venv/
-issue_experiments/results/*.txt
+# NOTE: experiment logs under issue_experiments/results/ ARE committed
+# (reproducible record of the runs). Do not ignore them.

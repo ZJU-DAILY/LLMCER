@@ -1,0 +1,67 @@
+# experiment: blocking_recall
+# command: C:\Users\haitong\Desktop\LLMCER\.venv\Scripts\python.exe C:\Users\haitong\Desktop\LLMCER\issue_experiments\blocking_recall.py
+# started: 20260627_112820
+
+C:\Users\haitong\Desktop\LLMCER\.venv\Lib\site-packages\lshashpy3\__init__.py:1: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+========================================================================
+cora
+  embedding records with SBERT ...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|¨€¨€¨€¨€¨€¨€¨€¨€¨€¨€| 103/103 [00:00<00:00, 51473.05it/s]
+  records=1295  GT clusters(non-singleton)=93  true pairs=17184
+lsh done
+  b_t=0.300  blocks=     3  PC(recall)=0.9969  PQ(prec)=0.0205  F1=0.0403  RR=0.0046
+lsh done
+  b_t=0.400  blocks=     5  PC(recall)=0.9958  PQ(prec)=0.0206  F1=0.0403  RR=0.0062
+lsh done
+  b_t=0.500  blocks=     4  PC(recall)=1.0000  PQ(prec)=0.0206  F1=0.0404  RR=0.0046
+lsh done
+  b_t=0.600  blocks=    19  PC(recall)=0.9900  PQ(prec)=0.0217  F1=0.0425  RR=0.0652
+lsh done
+  b_t=0.700  blocks=    42  PC(recall)=0.9882  PQ(prec)=0.0260  F1=0.0507  RR=0.2216
+lsh done
+  b_t=0.800  blocks=    91  PC(recall)=0.9139  PQ(prec)=0.2368  F1=0.3761  RR=0.9208 <-- pipeline best
+lsh done
+  b_t=0.900  blocks=   133  PC(recall)=0.8554  PQ(prec)=0.7585  F1=0.8040  RR=0.9769
+========================================================================
+citeseer
+  embedding records with SBERT ...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|¨€¨€¨€¨€¨€¨€¨€¨€¨€¨€| 103/103 [00:00<00:00, 8468.69it/s]
+  records=9127  GT clusters(non-singleton)=2496  true pairs=13477
+lsh done
+  b_t=0.300  blocks=   379  PC(recall)=0.9616  PQ(prec)=0.0004  F1=0.0008  RR=0.1936
+lsh done
+  b_t=0.400  blocks=  1013  PC(recall)=0.9323  PQ(prec)=0.0007  F1=0.0013  RR=0.5443
+lsh done
+  b_t=0.500  blocks=  1924  PC(recall)=0.8957  PQ(prec)=0.0027  F1=0.0055  RR=0.8941
+lsh done
+  b_t=0.600  blocks=  2751  PC(recall)=0.8798  PQ(prec)=0.2248  F1=0.3581  RR=0.9987
+lsh done
+  b_t=0.700  blocks=  3019  PC(recall)=0.8768  PQ(prec)=0.9148  F1=0.8954  RR=0.9997 <-- pipeline best
+lsh done
+  b_t=0.800  blocks=  3102  PC(recall)=0.8690  PQ(prec)=0.9897  F1=0.9254  RR=0.9997
+lsh done
+  b_t=0.900  blocks=  3357  PC(recall)=0.8183  PQ(prec)=0.9995  F1=0.8998  RR=0.9997
+========================================================================
+google-DBLP
+  embedding records with SBERT ...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|¨€¨€¨€¨€¨€¨€¨€¨€¨€¨€| 103/103 [00:00<00:00, 9782.47it/s]
+  records=7626  GT clusters(non-singleton)=2351  true pairs=13763
+lsh done
+  b_t=0.300  blocks=    94  PC(recall)=0.9828  PQ(prec)=0.0005  F1=0.0010  RR=0.0353
+lsh done
+  b_t=0.400  blocks=   325  PC(recall)=0.9573  PQ(prec)=0.0005  F1=0.0010  RR=0.1278
+lsh done
+  b_t=0.500  blocks=   790  PC(recall)=0.9018  PQ(prec)=0.0006  F1=0.0012  RR=0.3164 <-- pipeline best
+lsh done
+  b_t=0.600  blocks=  1933  PC(recall)=0.7919  PQ(prec)=0.0015  F1=0.0029  RR=0.7441
+lsh done
+  b_t=0.700  blocks=  2960  PC(recall)=0.7087  PQ(prec)=0.0561  F1=0.1039  RR=0.9940
+lsh done
+  b_t=0.800  blocks=  3567  PC(recall)=0.6434  PQ(prec)=0.6010  F1=0.6215  RR=0.9995
+lsh done
+  b_t=0.900  blocks=  4569  PC(recall)=0.4019  PQ(prec)=0.9487  F1=0.5647  RR=0.9998
+========================================================================
+music20K
+  embedding records with SBERT ...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|¨€¨€¨€¨€¨€¨€¨€¨€¨€¨€| 103/103 [00:00<00:00, 8584.98it/s]

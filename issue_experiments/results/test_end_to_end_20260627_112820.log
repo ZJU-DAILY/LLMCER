@@ -1,0 +1,11 @@
+# experiment: test_end_to_end
+# command: C:\Users\haitong\Desktop\LLMCER\.venv\Scripts\python.exe C:\Users\haitong\Desktop\LLMCER\issue_experiments\test_end_to_end.py
+# started: 20260627_112820
+
+C:\Users\haitong\Desktop\LLMCER\.venv\Lib\site-packages\lshashpy3\__init__.py:1: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+records=28  entities=12  predicted clusters=12
+LLM calls=11  MDG interventions=0  merge rounds=3
+ACC=1.0000  FP-measure=1.0000
+
+[PASS] oracle pipeline recovers ground truth (ACC=1.0000)
