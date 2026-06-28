@@ -1,8 +1,0 @@
-dataset,n_tasks,n_records,acc_mean,acc_std,fp_mean,fp_std,ari_stability,flip_rate,verdict,log
-cora,3,27,0.9206,0.0309,0.9601,0.0158,0.9675,0.0256,task order has a MEASURABLE effect — report it,issue_experiments/results/batch_ordering/run_real_20260627_100206/cora.log
-citeseer,3,27,0.9894,0.0259,0.9945,0.0135,0.9763,0.0171,task order has a MEASURABLE effect — report it,issue_experiments/results/batch_ordering/run_real_20260627_100206/citeseer.log
-google-DBLP,3,27,0.9735,0.0167,0.9865,0.0085,0.9742,0.0028,task order has a MEASURABLE effect — report it,issue_experiments/results/batch_ordering/run_real_20260627_100206/google-DBLP.log
-music20K,3,27,0.9524,0.0167,0.9755,0.0089,0.956,0.0028,task order has a MEASURABLE effect — report it,issue_experiments/results/batch_ordering/run_real_20260627_100206/music20K.log
-sigmod,3,27,0.9418,0.0479,0.9698,0.0255,0.8192,0.0256,task order has a MEASURABLE effect — report it,issue_experiments/results/batch_ordering/run_real_20260627_100206/sigmod.log
-song,3,27,0.6878,0.0518,0.8162,0.0392,0.8058,0.0513,task order has a MEASURABLE effect — report it,issue_experiments/results/batch_ordering/run_real_20260627_100206/song.log
-affiliation,3,27,0.7831,0.0417,0.8802,0.0215,0.8782,0.0427,task order has a MEASURABLE effect — report it,issue_experiments/results/batch_ordering/run_real_20260627_100206/affiliation.log

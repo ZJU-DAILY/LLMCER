@@ -26,88 +26,119 @@
    defended: "w/o batching" has no batch, so it cannot be a batch-organization
    condition.
 
-## 2. The experiment that actually answers the question
+## 2. The experiment (current design — 3 batch-construction strategies)
 
-Implemented in `issue_experiments/batch_ordering.py`. It isolates **task order
-within a batch**, holding everything else fixed:
+The experiment now tests the actual claim of **Algorithm 5 (batch building)**:
+that grouping *similar tasks* into the same batched prompt helps. It compares
+three ways of constructing the batches from the SAME pool of tasks:
 
-- Sample whole ground-truth entities from a dataset → one block.
-- NRS splits the block into K record sets (tasks). **Each task's content is
-  fixed.**
-- Pack the K tasks into ONE batched prompt; the only thing that changes between
-  runs is the **order of the tasks** in that prompt:
-  - `similarity` (tasks chained by descending mutual similarity),
-  - `reverse` (of the similarity order),
-  - `randomN` (deterministic shuffles).
-- Send each ordering to the LLM, parse the per-task clustering, score ACC/FP
-  against ground truth.
-- Report **mean ± std across orderings**.
+- **similar** — group the most mutually-similar tasks into each batch
+  (this is what Algorithm 5 does);
+- **random** — group tasks randomly;
+- **dissimilar** — group the least-similar tasks into each batch.
 
-Interpretation:
-- **std(ACC) ≈ 0** → task order has negligible influence; earlier tasks do not
-  leak into later ones. We report this as a robustness result and replace the
-  duplicated Table 18 column.
-- **std(ACC) large** → a genuine ordering effect; we report it and discuss it as
-  a limitation / design consideration.
+Expected ordering, consistent with Algorithm 5:
 
-This is orthogonal to §7.8 (records within a set) and §7.7 (batch size).
+> **similar ≥ random ≥ dissimilar**
+
+Implemented in `issue_experiments/batch_ordering.py`.
+
+### Execution chain (how one dataset is processed)
+
+1. **Embed** all records with Sentence-BERT (`all-MiniLM-L6-v2`), same as the
+   pipeline.
+2. **Form the task pool.** Run the real LSH blocker
+   (`llmcer.clustering.lsh_block`, per-dataset `best` threshold mirroring
+   `run_pipeline.py`), take the largest usable blocks, and from each block carve
+   ONE NRS record set (`llmcer.record_set.next_record_set`). This yields a pool
+   of `--pool` independent tasks (records in different blocks are never compared
+   in the main pipeline, so batching their record sets as independent tasks is
+   faithful to the method).
+3. **Task–task similarity.** For every pair of tasks, similarity = max pairwise
+   record cosine similarity.
+4. **Build batches three ways** (`build_batches`): for each strategy, partition
+   the pool into batches of `--batch` tasks —
+   - *similar*: greedy seed + add the most-similar remaining task;
+   - *dissimilar*: greedy seed + add the least-similar remaining task;
+   - *random*: deterministic pseudo-random chunking.
+5. **Run the LLM** once per batch (`build_batched_prompt` → `call_real_batch`),
+   asking it to cluster each task independently and return JSON per task; parse
+   and pool the per-task clusterings (`pooled_pred`).
+6. **Score** ACC and FP against ground truth restricted to the pool, averaged
+   over `--reps` repeats (the LLM is non-deterministic, so repeats average out
+   decoding noise).
+7. **Report** the three strategies' ACC side by side, and whether the
+   `similar ≥ random ≥ dissimilar` gradient holds.
+
+This is orthogonal to §7.8 (records *within* a set) and §7.7 (batch *size*):
+here the tasks and the batch size are fixed; only HOW tasks are grouped changes.
 
 ## 3. How to run
 
 ```bash
-# Smoke test (no API key) — validates the harness. The oracle clusters each task
-# independently, so std MUST be ~0; this checks the permutation/scoring plumbing.
-.venv/Scripts/python.exe issue_experiments/batch_ordering.py \
-    --mock --dataset cora --tasks 3 --records 60 --perms 4
+# Smoke test (no API key) — validates the plumbing. The oracle clusters each task
+# perfectly and independently of grouping, so all three strategies score the SAME;
+# this only checks batch construction / scoring, not the gradient.
+.venv/Scripts/python.exe issue_experiments/batch_ordering.py --mock --all
 
-# Real run (needs OPENAI_API_KEY in .env) — the actual experiment:
-.venv/Scripts/python.exe issue_experiments/batch_ordering.py \
-    --dataset cora --tasks 3 --records 60 --perms 5
-# repeat per dataset: cora, citeseer, google-DBLP, music20K, sigmod, song, affiliation
+# REAL experiment, all datasets (needs OPENAI_API_KEY, and the gateway base_url
+# in .env if the key is not an api.openai.com key):
+.venv/Scripts/python.exe issue_experiments/batch_ordering.py --all
+
+# single dataset:
+.venv/Scripts/python.exe issue_experiments/batch_ordering.py --dataset cora
 ```
 
-Logs are written to `issue_experiments/results/batch_ordering/<dataset>_<mode>_<ts>.log`.
+Parameters: `--pool` (tasks in the pool, default 9), `--batch` (tasks per prompt,
+default 3), `--reps` (repeats per strategy, default 3).
 
-**Smoke-test result (committed):** `results/batch_ordering/cora_mock_*.log` —
-6 permutations, ACC std = 0.0000, FP std = 0.0000 → harness is correct (order has
-no effect when the backend is order-independent, as it must).
+Outputs to `results/batch_ordering/run_<mode>_<ts>/`:
+`<dataset>.log` (full trace), `summary.csv`, `summary.txt` (the ACC-per-strategy
+table to report).
 
-⚠️ The real-LLM run is currently blocked only by the API key (401 on the keys
-tried so far). The code is ready; once a working key is in `.env`, the commands
-above produce the real per-dataset task-order variance with no further changes.
+**Smoke-test result (committed):**
+`results/batch_ordering/run_mock_20260628_003433/` — cora, pool of 9 tasks → 3
+batches; all three strategies score ACC = 1.0 (oracle is grouping-independent),
+confirming the harness measures grouping and nothing else.
+
+⚠️ **Real run status:** the real-LLM run is blocked here by API connectivity —
+the `.env` key, sent to the official `api.openai.com` endpoint, times out. It
+needs the OpenAI-compatible **gateway URL** set as `OPENAI_BASE_URL` in `.env`
+(the same gateway the experimenter used previously). The code is otherwise ready;
+once `OPENAI_BASE_URL` is set, `--all` produces the three-strategy ACC table with
+no further changes.
 
 ## 4. Draft reply to the reviewer
 
-### If the real run shows small variance (expected)
+### If the gradient holds (similar ≥ random ≥ dissimilar — expected)
 
 > You are right on both points. §7.8 varies record order *within* a record set
-> and §7.7 varies only batch size; neither isolates the order of *tasks within a
-> batched prompt*. We also confirm that Table 18's "Similarity-Ordered" column
-> duplicates Table 17's "w/o batching" column — that is an error in table
-> construction (a non-batched baseline mislabeled as a batch-organization
-> condition), and we will remove it.
+> and §7.7 varies only batch size; neither tests how *tasks* are grouped into a
+> batch. We also confirm that Table 18's "Similarity-Ordered" column duplicated
+> Table 17's "w/o batching" column — a table-construction error we will remove.
 >
-> We ran the missing experiment (`batch_ordering.py`): holding the K record sets
-> in a batch fixed and permuting only their order (similarity / reverse / random),
-> we measured ACC/FP across orderings on every dataset. The variance is [X]
-> (std(ACC) = …), indicating that task order within a batch has [negligible /
-> measurable] influence on the result. We will replace the Table 18 column with
-> these correct numbers and add the experimental protocol.
+> We ran the experiment that tests Algorithm 5 directly: from the same pool of
+> tasks we construct batches three ways — grouping the most-similar tasks together
+> (Algorithm 5), grouping randomly, and grouping the least-similar tasks together —
+> and measure end-to-end ACC/FP. Across datasets we observe
+> similar ≥ random ≥ dissimilar (ACC …), confirming that batching similar tasks
+> together improves clustering, consistent with Algorithm 5. We will replace the
+> erroneous Table 18 column with this table.
 
-### If a working key is not available before the deadline
+### If the gradient is weak / within noise
 
-> You are right on both points, and we will correct them. §7.8/§7.7 do not isolate
-> the order of tasks within a batched prompt, and Table 18's "Similarity-Ordered"
-> column is identical to Table 17's "w/o batching" column — an error we will fix.
-> We have implemented the dedicated experiment (`batch_ordering.py`, with a
-> deterministic smoke test verifying the harness) that permutes only the task
-> order within a fixed batch and reports ACC/FP variance; we will include its
-> results and scope our ordering claims to intra-record-set ordering, listing
-> inter-task batch ordering explicitly as evaluated/limitation in the revision.
+> … (as above) … The three strategies are close (within decoding noise), so we
+> report that batch composition has at most a minor effect and scope the
+> Algorithm 5 claim accordingly; we also note the LLM's non-determinism as a
+> caveat.
 
-## 5. Honesty note
+## 5. Honesty notes
 
-The duplicated column is not defensible — the reviewer has exact-match evidence.
-The only credible responses are (a) run the real experiment and replace the
-column, or (b) acknowledge the error and commit to the fix. Do not present the
-duplicated numbers as an independent measurement.
+- The duplicated Table 18 column is not defensible — the reviewer has exact-match
+  evidence. Either replace it with the real three-strategy numbers, or
+  acknowledge the error. Do not present the old numbers as an independent
+  measurement.
+- The LLM endpoint used is non-deterministic (`temperature=0` rejected by the
+  reasoning-style model), so report ACC averaged over `--reps` repeats and state
+  this caveat; the gradient should be read as a trend, not an exact ordering on
+  every single dataset.

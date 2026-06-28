@@ -1,8 +1,0 @@
-dataset,n_tasks,n_records,acc_mean,acc_std,fp_mean,fp_std,ari_stability,flip_rate,verdict,log
-cora,3,27,0.3333,0.0,0.5,0.0,1.0,0.0,"task order IRRELEVANT (ARI~1, std~0)",issue_experiments\results\batch_ordering\run_mock_20260627_121605\cora.log
-citeseer,3,27,0.7037,0.0,0.8261,0.0,1.0,0.0,"task order IRRELEVANT (ARI~1, std~0)",issue_experiments\results\batch_ordering\run_mock_20260627_121605\citeseer.log
-google-DBLP,3,27,0.8148,0.0,0.898,0.0,1.0,0.0,"task order IRRELEVANT (ARI~1, std~0)",issue_experiments\results\batch_ordering\run_mock_20260627_121605\google-DBLP.log
-music20K,3,27,0.8148,0.0,0.898,0.0,1.0,0.0,"task order IRRELEVANT (ARI~1, std~0)",issue_experiments\results\batch_ordering\run_mock_20260627_121605\music20K.log
-sigmod,3,27,0.4444,0.0,0.6154,0.0,1.0,0.0,"task order IRRELEVANT (ARI~1, std~0)",issue_experiments\results\batch_ordering\run_mock_20260627_121605\sigmod.log
-song,3,27,0.7037,0.0,0.8261,0.0,1.0,0.0,"task order IRRELEVANT (ARI~1, std~0)",issue_experiments\results\batch_ordering\run_mock_20260627_121605\song.log
-affiliation,3,27,0.4444,0.0,0.6154,0.0,1.0,0.0,"task order IRRELEVANT (ARI~1, std~0)",issue_experiments\results\batch_ordering\run_mock_20260627_121605\affiliation.log

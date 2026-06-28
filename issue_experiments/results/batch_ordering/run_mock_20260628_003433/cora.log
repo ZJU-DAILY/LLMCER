@@ -1,0 +1,16 @@
+# batch CONSTRUCTION strategy | dataset=cora mode=mock pool=9 batch=3 reps=2
+  blocking: threshold=0.9 (cora) -> 139 blocks, 91 usable; building a pool of up to 9 tasks
+  pool: 9 tasks, 81 records total
+
+strategy     rep  #batches      ACC       FP
+----------------------------------------------
+similar        0         3   1.0000   1.0000
+similar        1         3   1.0000   1.0000
+random         0         3   1.0000   1.0000
+random         1         3   1.0000   1.0000
+dissimilar     0         3   1.0000   1.0000
+dissimilar     1         3   1.0000   1.0000
+----------------------------------------------
+ACC  similar=1.0000  random=1.0000  dissimilar=1.0000
+gradient similar>=random>=dissimilar : YES
+(mock oracle is grouping-independent, so the three are equal by construction — this only validates the harness.)

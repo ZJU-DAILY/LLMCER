@@ -40,6 +40,10 @@ DATASETS = {
     "sigmod":      ("datasets/sigmod/alaska.csv",            "datasets/sigmod/alaska_gt.csv"), # Alaska
     "song":        ("datasets/song/songs.csv",              "datasets/song/gt.txt"),           # Song
     "affiliation": ("datasets/affiliation/new_affi_data.csv","datasets/affiliation/new_mapping.csv"),  # AS
+    # Walmart-Amazon: single-table version walmart_amazon.csv (1808 records,
+    # 0-based id) + gt.csv pair list. The GT ids align exactly with this file
+    # (NOT tableA.csv, which is the larger raw dump).
+    "walmart-amazon": ("datasets/Walmart_Amazon/walmart_amazon.csv", "datasets/Walmart_Amazon/gt.csv"),  # WA
 }
 
 # Per-dataset RECALL-AWARE best block_threshold: among swept thresholds, the one
@@ -48,11 +52,12 @@ DATASETS = {
 # report for the blocking-recall question (reviewer issue #2): blocking should
 # not silently discard true matches, so we choose b_t to keep recall high.
 BEST_THR = {
-    "cora": 0.80, "song": 0.30, "citeseer": 0.70, "google-DBLP": 0.50,
+    "cora": 0.80, "song": 0.30, "citeseer": 0.40, "google-DBLP": 0.50,
     "music20K": 0.40, "affiliation": 0.40, "sigmod": 0.80,
+    "walmart-amazon": 0.10,  # hard product-matching set; recall ~0.89 at b_t=0.10
 }
 
-SWEEP = [0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90]
+SWEEP = [0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90]
 
 
 def embed(data_path):

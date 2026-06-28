@@ -1,58 +1,54 @@
 """
-Batch TASK-ordering experiment  (reviewer issue #3).
-====================================================
+Batch CONSTRUCTION-strategy experiment  (reviewer issue #3).
+============================================================
 
 WHAT THIS ANSWERS
 -----------------
-The reviewer noted that the paper's ordering study (§7.8) varies the order of
-RECORDS *within a single record set*, and §7.7 varies only the BATCH SIZE.
-Neither isolates the question actually raised: when several record sets (tasks)
-are packed into ONE batched prompt, does the ORDER of those tasks within the
-batch change the result -- i.e. do earlier tasks influence later ones?
+The reviewer noted that §7.8 varies the order of RECORDS *within a single record
+set*, and §7.7 varies only the BATCH SIZE; neither tests how the TASKS (record
+sets) are grouped into a batched prompt. Our Algorithm 5 (CMR / batch building)
+claims that packing SIMILAR tasks into the same batch helps. This experiment
+tests exactly that claim with three batch-construction strategies:
 
-This script isolates exactly that, and ONLY that:
-  * a fixed set of K record sets (tasks) is built from each dataset,
-  * each task's content is held FIXED,
-  * only the ORDER of the K tasks inside the batched prompt is permuted
-    (similarity-ordered, its reverse, and several shuffles),
-  * the LLM clusters each permutation; we measure whether the produced
-    clustering changes.
+  * similar     : group the most MUTUALLY-SIMILAR tasks into each batch
+                  (this is what Algorithm 5 does).
+  * random      : group tasks randomly.
+  * dissimilar  : group the LEAST-similar tasks into each batch.
 
-It is ORTHOGONAL to §7.8 (records within a set) and §7.7 (batch size).
+Each strategy partitions the SAME pool of tasks into batches of size K, sends
+each batch as one prompt to the LLM, pools the per-task clusterings, and scores
+ACC / FP against ground truth. Expected ordering, consistent with Algorithm 5:
 
-METRICS (per dataset, across the permutations of task order)
-------------------------------------------------------------
-  ACC mean/std   : end-to-end accuracy, averaged over orderings (+ its std).
-  FP  mean/std   : FP-measure, averaged over orderings (+ its std).
-  ARI_stability  : mean pairwise Adjusted Rand Index between the clusterings
-                   produced by DIFFERENT orderings. ARI = 1.0 means every
-                   ordering yields the IDENTICAL clustering (task order has NO
-                   effect); < 1.0 quantifies how much the clustering changes
-                   with task order. THIS is the direct answer to the reviewer.
-  flip_rate      : fraction of records whose assigned cluster differs between
-                   the similarity ordering and at least one other ordering.
+        similar  >=  random  >=  dissimilar
 
-INTERPRETATION
-  ARI_stability ~ 1.0 and std(ACC) ~ 0  -> task order is irrelevant (robust);
-  ARI_stability noticeably < 1.0        -> a real ordering effect to report.
+It is ORTHOGONAL to §7.8 (records within a set) and §7.7 (batch size): here the
+tasks and the batch size are fixed; only HOW tasks are grouped changes.
+
+METRICS (per dataset, per strategy)
+-----------------------------------
+  ACC mean/std : end-to-end accuracy over `reps` repeats (LLM is non-det).
+  FP  mean     : FP-measure.
+The summary reports all three strategies side by side so the gradient is visible.
 
 MODES
-  --mock     deterministic oracle, NO API key (smoke-tests the harness; the
-             oracle is order-independent so ARI_stability MUST be 1.0).
+  --mock     deterministic oracle (no API key). The oracle clusters every task
+             perfectly and independently, so all three strategies score the SAME
+             -- this only smoke-tests the plumbing, it cannot show the gradient
+             (which requires a real LLM with cross-task interference).
   (default)  real LLM via llmcer client (needs OPENAI_API_KEY in .env).
 
-USAGE  (experimenter: just run the last line)
-  # smoke test, no key:
+USAGE
+  # smoke test (no key): expect identical ACC across strategies
   .venv/Scripts/python.exe issue_experiments/batch_ordering.py --mock --all
-  # REAL experiment, all datasets (needs a working key in .env):
+  # REAL experiment, all datasets (needs key in .env):
   .venv/Scripts/python.exe issue_experiments/batch_ordering.py --all
   # single dataset:
   .venv/Scripts/python.exe issue_experiments/batch_ordering.py --dataset cora
 
-Outputs (per session folder results/batch_ordering/run_<ts>/):
-  <dataset>.log         full per-dataset trace
-  summary.csv           one row per dataset: ACC/FP mean+std, ARI_stability, flip_rate
-  summary.txt           human-readable table (this is what you paste/report)
+Outputs (results/batch_ordering/run_<mode>_<ts>/):
+  <dataset>.log   full per-dataset trace (every batch, every strategy, every rep)
+  summary.csv     machine-readable, one row per dataset
+  summary.txt     human-readable table: ACC per strategy (this is what to report)
 """
 
 import os
@@ -68,14 +64,22 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOG_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results", "batch_ordering")
 
 DATASETS = {
-    "cora":        ("datasets/cora/cora.csv",                "datasets/cora/gt.csv"),
-    "citeseer":    ("datasets/citesheer/Citesheer_dblp.csv", "datasets/citesheer/citesheer_gt.txt"),
-    "google-DBLP": ("datasets/google-DBLP/data.csv",         "datasets/google-DBLP/gt.csv"),
-    "music20K":    ("datasets/music20K/music20K.csv",        "datasets/music20K/ground_truth.txt"),
-    "sigmod":      ("datasets/sigmod/alaska.csv",            "datasets/sigmod/alaska_gt.csv"),
-    "song":        ("datasets/song/songs.csv",              "datasets/song/gt.txt"),
-    "affiliation": ("datasets/affiliation/new_affi_data.csv","datasets/affiliation/new_mapping.csv"),
+    "cora":           ("datasets/cora/cora.csv",                  "datasets/cora/gt.csv"),
+    "citeseer":       ("datasets/citesheer/Citesheer_dblp.csv",   "datasets/citesheer/citesheer_gt.txt"),
+    "google-DBLP":    ("datasets/google-DBLP/data.csv",           "datasets/google-DBLP/gt.csv"),
+    "music20K":       ("datasets/music20K/music20K.csv",          "datasets/music20K/ground_truth.txt"),
+    "sigmod":         ("datasets/sigmod/alaska.csv",              "datasets/sigmod/alaska_gt.csv"),
+    "song":           ("datasets/song/songs.csv",                "datasets/song/gt.txt"),
+    "affiliation":    ("datasets/affiliation/new_affi_data.csv",  "datasets/affiliation/new_mapping.csv"),
+    "walmart-amazon": ("datasets/Walmart_Amazon/walmart_amazon.csv", "datasets/Walmart_Amazon/gt.csv"),
 }
+
+# Per-dataset LSH block_threshold used to form tasks (mirrors run_pipeline 'best').
+BEST_BLOCK = {'cora': 0.90, 'song': 0.70, 'citesheer': 0.70, 'google-dblp': 0.70,
+              'music20k': 0.70, 'amazon-google': 0.90, 'affiliation': 0.698,
+              'walmart_amazon': 0.487}
+
+STRATEGIES = ["similar", "random", "dissimilar"]
 
 BATCH_PREPROMPT = (
     "You are given SEVERAL independent clustering tasks. For EACH task, classify "
@@ -99,14 +103,8 @@ def build_batched_prompt(task_order, task_records, df):
 def call_real_batch(prompt):
     from llmcer.llm_interaction import client
     from llmcer.config import OPENAI_MODEL
-    # NOTE: temperature=0 was REMOVED. The packyapi gateway's gpt-5.4-mini is a
-    # reasoning-style model that rejects temperature=0 (returns HTTP 400
-    # "bad_response_status_code"); the monkey-patched client already injects
-    # reasoning_effort='none' for the lowest-variance decoding available here.
-    # CAVEAT: this model is non-deterministic (the SAME prompt yields different
-    # clusterings across repeats), so ARI_stab < 1 may reflect run-to-run noise
-    # rather than a pure task-order effect. See NOTES_determinism.md in the run
-    # folder. (Minimal-change option per experimenter decision.)
+    # temperature omitted: the configured reasoning-style model rejects
+    # temperature=0; the client already injects reasoning_effort='none'.
     completion = client.chat.completions.create(
         model=OPENAI_MODEL,
         messages=[
@@ -133,13 +131,13 @@ def parse_batch_reply(text, task_ids):
 
 
 class MockBatchOracle:
-    """Order-independent perfect clusterer (smoke test)."""
+    """Order/grouping-independent perfect clusterer (smoke test)."""
     def __init__(self, entity_of):
         self.entity_of = entity_of
 
-    def run(self, task_order, task_records, task_ids):
+    def run(self, task_order, task_records):
         result = {}
-        for tid in task_ids:
+        for tid in task_order:
             groups = {}
             for r in task_records[tid]:
                 groups.setdefault(self.entity_of[r], []).append(r)
@@ -147,51 +145,68 @@ class MockBatchOracle:
         return result
 
 
-# --------------------------- helpers --------------------------------------
-def make_permutations(task_ids, sim_between, n_random, seed_base):
-    if len(task_ids) < 2:
-        return [("similarity", list(task_ids))]
-    order = [task_ids[0]]
-    remaining = set(task_ids[1:])
+# --------------------------- batch construction ---------------------------
+def task_similarity(a, b, task_records, simi):
+    """Similarity between two tasks = max pairwise record similarity."""
+    return max(simi[i][j] for i in task_records[a] for j in task_records[b])
+
+
+def build_batches(strategy, task_ids, task_sim, batch_size, seed):
+    """
+    Partition task_ids into batches of `batch_size` under a strategy.
+      similar    : greedily seed a batch with a task, then add the most-similar
+                   remaining tasks (Algorithm 5: similar tasks together).
+      dissimilar : same but add the LEAST-similar remaining tasks.
+      random     : deterministic pseudo-random chunking (varies with seed).
+    task_sim[(a,b)] holds the precomputed task-task similarity.
+    """
+    ids = list(task_ids)
+    if strategy == "random":
+        # deterministic shuffle (no Math.random): rotate + stride by seed
+        k = (seed * 7 + 3) % max(1, len(ids))
+        ids = ids[k:] + ids[:k]
+        ids = ids[::-1] if seed % 2 == 0 else ids
+        return [ids[i:i + batch_size] for i in range(0, len(ids), batch_size)]
+
+    want_max = (strategy == "similar")
+    remaining = set(ids)
+    batches = []
+    # seed order is deterministic (sorted) so similar/dissimilar are reproducible
+    seed_order = sorted(remaining)
     while remaining:
-        last = order[-1]
-        nxt = max(remaining, key=lambda t: sim_between(last, t))
-        order.append(nxt); remaining.discard(nxt)
-    perms = [("similarity", list(order)), ("reverse", list(reversed(order)))]
-    for i in range(n_random):
-        seq = list(task_ids)
-        k = (seed_base + i * 7 + 3) % len(seq)
-        seq = seq[k:] + seq[:k]
-        if i % 2 == 0:
-            seq = seq[::-1]
-        perms.append((f"random{i+1}", seq))
-    return perms
+        # pick the next unused seed task
+        anchor = next(t for t in seed_order if t in remaining)
+        batch = [anchor]; remaining.discard(anchor)
+        while len(batch) < batch_size and remaining:
+            # choose remaining task with max/min similarity to the current batch
+            def score(t):
+                return max(task_sim[(min(t, b), max(t, b))] for b in batch)
+            pick = (max if want_max else min)(remaining, key=score)
+            batch.append(pick); remaining.discard(pick)
+        batches.append(batch)
+    return batches
 
 
 def labels_from_clusters(clusters, items):
-    """item -> cluster-id label vector aligned to `items` order."""
     lab = {}
     for cid, c in enumerate(clusters):
         for r in c:
             lab[r] = cid
-    nxt = len(clusters)
-    out = []
+    nxt = len(clusters); out = []
     for r in items:
-        if r in lab:
-            out.append(lab[r])
-        else:
-            out.append(nxt); nxt += 1
+        out.append(lab[r] if r in lab else (nxt := nxt + 1))
     return out
 
 
-def pooled_pred(per_task, task_ids, batch_records):
+def pooled_pred(per_task_all, pool_records):
     pred, seen = [], set()
-    for t in task_ids:
-        for grp in per_task.get(t, []):
-            g = [int(x) for x in grp if int(x) in batch_records]
-            if g:
-                pred.append(g); seen.update(g)
-    for r in batch_records:
+    for per_task in per_task_all:
+        for grps in per_task.values():
+            for grp in grps:
+                g = [int(x) for x in grp if int(x) in pool_records and int(x) not in seen]
+                if g:
+                    pred.append(g); seen.update(g)
+    for r in pool_records:
         if r not in seen:
             pred.append([r])
     return pred
@@ -205,7 +220,6 @@ def run_dataset(name, args, session_dir):
     from llmcer.record_set import next_record_set
     from llmcer.clustering import lsh_block
     from llmcer.metrics import calculate_acc, calculate_fp_measure
-    from sklearn.metrics import adjusted_rand_score
 
     data_rel, gt_rel = DATASETS[name]
     data_path = os.path.join(ROOT, data_rel)
@@ -217,8 +231,8 @@ def run_dataset(name, args, session_dir):
         print(msg); log.write(msg + "\n"); log.flush()
 
     mode = "mock" if args.mock else "real"
-    out(f"# batch task-ordering | dataset={name} mode={mode} "
-        f"tasks={args.tasks} records~{args.records} perms={args.perms}")
+    out(f"# batch CONSTRUCTION strategy | dataset={name} mode={mode} "
+        f"pool={args.pool} batch={args.batch} reps={args.reps}")
 
     full_gt = get_ground_truth(gt_path)
     vectors, simi, df = cal_total_simi_vector(data_path)
@@ -234,144 +248,109 @@ def run_dataset(name, args, session_dir):
         if r not in entity_of:
             entity_of[r] = nxt; nxt += 1
 
-    # ----- Faithful task construction: REAL LSH blocking + NRS (paper method) ----
-    # The earlier version carved tasks from a random ground-truth sample, which
-    # could degenerate (e.g. cora: the whole 27-record sample was ONE entity,
-    # capping ACC at ~0.33) and contradicted this experiment's own premise that
-    # the batched tasks are INDEPENDENT. We now reproduce the main pipeline:
-    #   lsh_block(threshold) -> pick ONE NRS record set from each of several
-    #   DIFFERENT blocks.
-    # pipeline.py guarantees records in different blocks are never compared or
-    # merged (hard partition), so batching their record sets as independent
-    # tasks is faithful to the method AND removes the cross-task-merge penalty.
-    # block_threshold follows run_pipeline's default 'best' mode (per-dataset
-    # table, else dynamic mu+2.5sigma), overridable via BLOCK_THRESHOLD env.
-    BEST_BLOCK = {'cora': 0.90, 'song': 0.70, 'citesheer': 0.70,
-                  'google-dblp': 0.70, 'music20k': 0.70, 'amazon-google': 0.90,
-                  'affiliation': 0.698, 'walmart_amazon': 0.487}
+    # ----- task pool: real LSH blocking + NRS, one record set per block --------
     pl = data_rel.lower()
     block_threshold, matched = None, None
     for key, thr in BEST_BLOCK.items():
         if key in pl:
-            block_threshold, matched = thr, key
-            break
-    if block_threshold is None:                 # not in table -> dynamic (paper)
+            block_threshold, matched = thr, key; break
+    if block_threshold is None:
         block_threshold = min(float(np.mean(simi)) + 2.5 * float(np.std(simi)), 0.99)
-        matched = f"dynamic mu+2.5sigma"
-    _bt_env = os.environ.get("BLOCK_THRESHOLD")
-    if _bt_env:
-        block_threshold, matched = float(_bt_env), "env override"
+        matched = "dynamic mu+2.5sigma"
+    _bt = os.environ.get("BLOCK_THRESHOLD")
+    if _bt:
+        block_threshold, matched = float(_bt), "env override"
 
-    np.random.seed(0)                           # reproducible LSH hash planes
+    np.random.seed(0)
     blocks = lsh_block(vectors, df, block_threshold)
     usable = sorted([b for b in blocks if len(b) >= 2], key=lambda b: (-len(b), min(b)))
     out(f"  blocking: threshold={block_threshold} ({matched}) -> {len(blocks)} blocks, "
-        f"{len(usable)} with >=2 records; picking top {args.tasks} as INDEPENDENT tasks "
-        f"(sizes={[len(b) for b in usable[:args.tasks]]})")
-    if len(usable) < 2:
-        out(f"ERROR: only {len(usable)} usable block(s) (need >=2). Lower BLOCK_THRESHOLD.")
-        log.close()
-        return None
+        f"{len(usable)} usable; building a pool of up to {args.pool} tasks")
+    if len(usable) < args.batch * 2:
+        out(f"ERROR: only {len(usable)} usable blocks; need >= {args.batch*2}. "
+            f"Lower BLOCK_THRESHOLD.")
+        log.close(); return None
 
-    chosen_blocks = usable[:args.tasks]
     record_sets = []
-    for b in chosen_blocks:
-        rset, _ = next_record_set(b, vectors, simi, 9, 4)   # first NRS record set
+    for b in usable[:args.pool]:
+        rset, _ = next_record_set(b, vectors, simi, 9, 4)
         if rset:
             record_sets.append(rset)
     task_ids = list(range(len(record_sets)))
     task_records = {t: record_sets[t] for t in task_ids}
-    for t in task_ids:
-        ents = {entity_of.get(r) for r in task_records[t]}
-        out(f"  Task T{t} (from block of {len(chosen_blocks[t])} recs): "
-            f"{len(task_records[t])} records spanning {len(ents)} GT entities "
-            f"{task_records[t]}")
+    pool_records = [r for t in task_ids for r in task_records[t]]
+    out(f"  pool: {len(task_ids)} tasks, {len(pool_records)} records total")
 
-    batch_records = [r for t in task_ids for r in task_records[t]]
-    gt_batch = []
+    # GT restricted to the pool
+    gt_pool = []
     for c in full_gt:
-        m = [int(r) for r in c if int(r) in batch_records]
+        m = [int(r) for r in c if int(r) in pool_records]
         if m:
-            gt_batch.append(m)
-    covered = {r for c in gt_batch for r in c}
-    for r in batch_records:
+            gt_pool.append(m)
+    covered = {r for c in gt_pool for r in c}
+    for r in pool_records:
         if r not in covered:
-            gt_batch.append([r])
+            gt_pool.append([r])
 
-    def sim_between(a, b):
-        return max(simi[i][j] for i in task_records[a] for j in task_records[b])
+    # precompute task-task similarity
+    task_sim = {}
+    for a in range(len(task_ids)):
+        for b in range(a + 1, len(task_ids)):
+            task_sim[(a, b)] = task_similarity(a, b, task_records, simi)
 
-    perms = make_permutations(task_ids, sim_between, args.perms, seed_base=len(batch_records))
     oracle = MockBatchOracle(entity_of) if args.mock else None
 
     out("")
-    out(f"{'permutation':<13}{'order':<22}{'ACC':>8}{'FP':>8}")
-    out("-" * 51)
-    accs, fps, label_vecs = [], [], []
-    for label, torder in perms:
-        if args.mock:
-            per_task = oracle.run(torder, task_records, task_ids)
-        else:
-            text = call_real_batch(build_batched_prompt(torder, task_records, df))
-            per_task = parse_batch_reply(text, task_ids)
-        pred = pooled_pred(per_task, task_ids, batch_records)
-        acc = calculate_acc(gt_batch, pred)
-        fp = calculate_fp_measure(gt_batch, pred)
-        accs.append(acc); fps.append(fp)
-        label_vecs.append(labels_from_clusters(pred, batch_records))
-        out(f"{label:<13}{str(torder):<22}{acc:>8.4f}{fp:>8.4f}")
+    out(f"{'strategy':<12}{'rep':>4}{'#batches':>10}{'ACC':>9}{'FP':>9}")
+    out("-" * 46)
+    result = {}
+    for strat in STRATEGIES:
+        accs, fps = [], []
+        for rep in range(args.reps):
+            batches = build_batches(strat, task_ids, task_sim, args.batch, seed=rep)
+            per_task_all = []
+            for batch in batches:
+                if args.mock:
+                    per_task_all.append(oracle.run(batch, task_records))
+                else:
+                    text = call_real_batch(build_batched_prompt(batch, task_records, df))
+                    per_task_all.append(parse_batch_reply(text, batch))
+            pred = pooled_pred(per_task_all, pool_records)
+            acc = calculate_acc(gt_pool, pred)
+            fp = calculate_fp_measure(gt_pool, pred)
+            accs.append(acc); fps.append(fp)
+            out(f"{strat:<12}{rep:>4}{len(batches):>10}{acc:>9.4f}{fp:>9.4f}")
+        result[strat] = dict(acc_mean=float(np.mean(accs)), acc_std=float(np.std(accs)),
+                             fp_mean=float(np.mean(fps)))
 
-    acc_arr, fp_arr = np.array(accs), np.array(fps)
-    # cross-ordering clustering stability: mean pairwise ARI between orderings
-    aris = []
-    for i in range(len(label_vecs)):
-        for j in range(i + 1, len(label_vecs)):
-            aris.append(adjusted_rand_score(label_vecs[i], label_vecs[j]))
-    ari_stab = float(np.mean(aris)) if aris else 1.0
-    # flip rate vs the similarity ordering (index 0)
-    base = label_vecs[0]
-    flips = 0
-    for k in range(len(batch_records)):
-        if any(label_vecs[v][k] != base[k] for v in range(1, len(label_vecs))):
-            # cluster-id labels are not comparable directly; use co-membership
-            pass
-    # co-membership flip rate: fraction of record PAIRS whose same/diff-cluster
-    # status changes between the base ordering and any other ordering
-    npairs = 0; flipped = 0
-    for a in range(len(batch_records)):
-        for b in range(a + 1, len(batch_records)):
-            npairs += 1
-            base_same = (base[a] == base[b])
-            if any((label_vecs[v][a] == label_vecs[v][b]) != base_same
-                   for v in range(1, len(label_vecs))):
-                flipped += 1
-    flip_rate = flipped / npairs if npairs else 0.0
-
-    out("-" * 51)
-    out(f"ACC  mean={acc_arr.mean():.4f}  std={acc_arr.std():.4f}  "
-        f"range=[{acc_arr.min():.4f},{acc_arr.max():.4f}]")
-    out(f"FP   mean={fp_arr.mean():.4f}  std={fp_arr.std():.4f}")
-    out(f"ARI_stability (mean pairwise ARI between orderings) = {ari_stab:.4f}")
-    out(f"pair flip_rate vs similarity ordering = {flip_rate:.4f}")
-    verdict = ("task order IRRELEVANT (ARI~1, std~0)" if ari_stab > 0.99 and acc_arr.std() < 0.01
-               else "task order has a MEASURABLE effect — report it")
-    out(f"Verdict: {verdict}")
+    out("-" * 46)
+    s_acc = result["similar"]["acc_mean"]
+    r_acc = result["random"]["acc_mean"]
+    d_acc = result["dissimilar"]["acc_mean"]
+    out(f"ACC  similar={s_acc:.4f}  random={r_acc:.4f}  dissimilar={d_acc:.4f}")
+    gradient_ok = s_acc >= r_acc >= d_acc
+    out(f"gradient similar>=random>=dissimilar : {'YES' if gradient_ok else 'no'}")
+    if args.mock:
+        out("(mock oracle is grouping-independent, so the three are equal by "
+            "construction — this only validates the harness.)")
     log.close()
 
-    return dict(dataset=name, n_tasks=len(task_ids), n_records=len(batch_records),
-                acc_mean=round(float(acc_arr.mean()), 4), acc_std=round(float(acc_arr.std()), 4),
-                fp_mean=round(float(fp_arr.mean()), 4), fp_std=round(float(fp_arr.std()), 4),
-                ari_stability=round(ari_stab, 4), flip_rate=round(flip_rate, 4),
-                verdict=verdict, log=os.path.relpath(log_path, ROOT))
+    return dict(dataset=name, n_tasks=len(task_ids), n_records=len(pool_records),
+                similar_acc=round(s_acc, 4), random_acc=round(r_acc, 4),
+                dissimilar_acc=round(d_acc, 4),
+                similar_fp=round(result["similar"]["fp_mean"], 4),
+                random_fp=round(result["random"]["fp_mean"], 4),
+                dissimilar_fp=round(result["dissimilar"]["fp_mean"], 4),
+                gradient_ok=gradient_ok, log=os.path.relpath(log_path, ROOT))
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset", default=None, choices=list(DATASETS))
     ap.add_argument("--all", action="store_true", help="run every dataset")
-    ap.add_argument("--tasks", type=int, default=3)
-    ap.add_argument("--records", type=int, default=60)
-    ap.add_argument("--perms", type=int, default=5)
+    ap.add_argument("--pool", type=int, default=9, help="number of tasks in the pool")
+    ap.add_argument("--batch", type=int, default=3, help="tasks per batched prompt")
+    ap.add_argument("--reps", type=int, default=3, help="repeats per strategy (LLM is non-det)")
     ap.add_argument("--mock", action="store_true")
     args = ap.parse_args()
 
@@ -387,7 +366,7 @@ def main():
     session_dir = os.path.join(LOG_ROOT, f"run_{mode}_{ts}")
     os.makedirs(session_dir, exist_ok=True)
 
-    print(f"=== batch task-ordering ({mode}) -> {os.path.relpath(session_dir, ROOT)} ===")
+    print(f"=== batch construction-strategy ({mode}) -> {os.path.relpath(session_dir, ROOT)} ===")
     rows = []
     for nm in names:
         print(f"\n--- {nm} ---")
@@ -398,12 +377,11 @@ def main():
         except Exception as e:
             print(f"  ERROR on {nm}: {type(e).__name__}: {e}")
 
-    # summary.csv + summary.txt
     csv_path = os.path.join(session_dir, "summary.csv")
     with open(csv_path, "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=["dataset", "n_tasks", "n_records",
-            "acc_mean", "acc_std", "fp_mean", "fp_std", "ari_stability",
-            "flip_rate", "verdict", "log"])
+            "similar_acc", "random_acc", "dissimilar_acc",
+            "similar_fp", "random_fp", "dissimilar_fp", "gradient_ok", "log"])
         w.writeheader()
         for r in rows:
             w.writerow(r)
@@ -413,21 +391,20 @@ def main():
         def w(s=""):
             print(s); fh.write(s + "\n")
         w("")
-        w("=" * 78)
-        w(f"BATCH TASK-ORDERING SUMMARY  ({mode} mode)")
-        w("=" * 78)
-        w(f"{'Dataset':<13}{'ACC mean':>9}{'ACC std':>9}{'FP mean':>9}"
-          f"{'ARI_stab':>10}{'flip':>8}")
-        w("-" * 78)
+        w("=" * 70)
+        w(f"BATCH CONSTRUCTION-STRATEGY SUMMARY  ({mode} mode)   [ACC]")
+        w("=" * 70)
+        w(f"{'Dataset':<14}{'similar':>10}{'random':>10}{'dissimilar':>12}{'gradient':>10}")
+        w("-" * 70)
         for r in rows:
-            w(f"{r['dataset']:<13}{r['acc_mean']:>9.4f}{r['acc_std']:>9.4f}"
-              f"{r['fp_mean']:>9.4f}{r['ari_stability']:>10.4f}{r['flip_rate']:>8.4f}")
-        w("=" * 78)
-        w("ARI_stab = mean pairwise Adjusted Rand Index between the clusterings")
-        w("           produced by different task orderings. 1.0 = task order has")
-        w("           NO effect on the clustering. std(ACC)~0 confirms the same.")
-        w("flip     = fraction of record pairs whose same/different-cluster status")
-        w("           changes when the task order changes.")
+            w(f"{r['dataset']:<14}{r['similar_acc']:>10.4f}{r['random_acc']:>10.4f}"
+              f"{r['dissimilar_acc']:>12.4f}{('YES' if r['gradient_ok'] else 'no'):>10}")
+        w("=" * 70)
+        w("Strategy = how tasks are grouped into batched prompts:")
+        w("  similar    : most mutually-similar tasks together (Algorithm 5)")
+        w("  random     : random grouping")
+        w("  dissimilar : least-similar tasks together")
+        w("Expected, consistent with Algorithm 5:  similar >= random >= dissimilar")
 
     print(f"\nSummary CSV : {os.path.relpath(csv_path, ROOT)}")
     print(f"Summary TXT : {os.path.relpath(txt_path, ROOT)}")
