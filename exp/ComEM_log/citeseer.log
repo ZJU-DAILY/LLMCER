@@ -1,0 +1,8 @@
+# ComEM selecting | dataset=citeseer model=gpt-5.4-mini FULL n=9127 topk=10
+  blocking done; running selecting on 9127 anchors (16 workers)...
+  selecting done in 14.6s; match edges=8975; pred clusters=2962 (gt clusters=2496)
+
+  ACC=0.9056  FP-measure=0.9504  NMI=0.9898  ARI=0.8908
+  Purity=1.0000  InvPurity=0.9056  BCubed F1=0.9422 (P=1.0000 R=0.8907)
+  [ComEM-native pairwise over candidates] P=1.0000 R=0.3334 F1=0.5000
+  API Calls=9127  InTokens=35361767  OutTokens=64135  Cost=$26.8099  LLM Time=14.6s

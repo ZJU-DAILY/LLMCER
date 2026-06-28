@@ -1,0 +1,35 @@
+Starting LLMCER Pipeline...
+Using dataset: datasets/affiliation/new_affi_data.csv
+Loading ground truth from datasets/affiliation/new_mapping.csv...
+Ground truth loaded, 330 clusters.
+Calculating vectors and similarity matrix...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 3176.17it/s]
+calculate similarity matrix done
+Thresholds: [BEST] block=0.698  merge=0.778  (matched 'affiliation', mu=0.299, sigma=0.160) | S_s=9 S_d=4
+Running LSH Blocking...
+lsh done
+LSH Blocking done. Found 520 blocks.
+Running in-context clustering + hierarchical merge per block...
+Done. Final clusters: 781
+Stats: API Calls=1176, LLM time=2116.05s, Tokens=341399, MDG interventions=127, merge rounds=180
+========================================
+FINAL METRICS REPORT
+========================================
+Augmented ground truth with 0 singletons (total records: 2260).
+ACC:            0.5788
+FP-measure:     0.7274
+NMI:            0.8915
+ARI:            0.5201
+--------------------
+Purity:         0.8704
+Inverse Purity: 0.6248
+BCubed F1:      0.6426  (P=0.8322 R=0.5233)
+----------------------------------------
+Total API Calls:      1176
+Total LLM Time:       2116.05 s  (wall: 1619.38 s)
+Total Tokens:         341399
+  - Input Tokens:     307713
+  - Output Tokens:    33686
+Total MDG Interventions: 127
+========================================
+Results saved to final_results.txt

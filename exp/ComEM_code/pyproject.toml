@@ -1,0 +1,24 @@
+# https://github.com/microsoft/pyright
+[tool.pyright]
+include = ["src"]
+venv = "llm4em"
+typeCheckingMode = "off"
+useLibraryCodeForTypes = true
+
+# https://github.com/charliermarsh/ruff
+[tool.ruff]
+fix = true
+target-version = "py311"
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle
+    "F",   # Pyflakes
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "I",   # isort
+]
+ignore = ["E501", "E741"]
+# https://github.com/timothycrosley/isort/
+[tool.ruff.lint.isort]
+combine-as-imports = true

@@ -1,0 +1,35 @@
+Starting LLMCER Pipeline...
+Using dataset: datasets/song/songs.csv
+Loading ground truth from datasets/song/gt.txt...
+Ground truth loaded, 1195 clusters.
+Calculating vectors and similarity matrix...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 1418.75it/s]
+calculate similarity matrix done
+Thresholds: [BEST] block=0.7  merge=0.512  (matched 'song', mu=0.236, sigma=0.092) | S_s=9 S_d=4
+Running LSH Blocking...
+lsh done
+LSH Blocking done. Found 2437 blocks.
+Running in-context clustering + hierarchical merge per block...
+Done. Final clusters: 2482
+Stats: API Calls=1206, LLM time=1900.49s, Tokens=339338, MDG interventions=51, merge rounds=1119
+========================================
+FINAL METRICS REPORT
+========================================
+Augmented ground truth with 0 singletons (total records: 4854).
+ACC:            0.7114
+FP-measure:     0.8304
+NMI:            0.9599
+ARI:            0.7272
+--------------------
+Purity:         0.9876
+Inverse Purity: 0.7163
+BCubed F1:      0.7904  (P=0.9857 R=0.6597)
+----------------------------------------
+Total API Calls:      1206
+Total LLM Time:       1900.49 s  (wall: 61.25 s)
+Total Tokens:         339338
+  - Input Tokens:     320089
+  - Output Tokens:    19249
+Total MDG Interventions: 51
+========================================
+Results saved to final_results.txt

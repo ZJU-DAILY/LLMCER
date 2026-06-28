@@ -1,0 +1,35 @@
+Starting LLMCER Pipeline...
+Using dataset: datasets/google-DBLP/data.csv
+Loading ground truth from datasets/google-DBLP/gt.csv...
+Ground truth loaded, 2351 clusters.
+Calculating vectors and similarity matrix...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 1211.19it/s]
+calculate similarity matrix done
+Thresholds: [BEST] block=0.7  merge=0.605  (matched 'google-dblp', mu=0.255, sigma=0.117) | S_s=9 S_d=4
+Running LSH Blocking...
+lsh done
+LSH Blocking done. Found 2811 blocks.
+Running in-context clustering + hierarchical merge per block...
+Done. Final clusters: 3135
+Stats: API Calls=2958, LLM time=5035.58s, Tokens=980281, MDG interventions=206, merge rounds=1812
+========================================
+FINAL METRICS REPORT
+========================================
+Augmented ground truth with 0 singletons (total records: 7626).
+ACC:            0.7132
+FP-measure:     0.8418
+NMI:            0.9490
+ARI:            0.2993
+--------------------
+Purity:         0.8507
+Inverse Purity: 0.8331
+BCubed F1:      0.8086  (P=0.8291 R=0.7890)
+----------------------------------------
+Total API Calls:      2958
+Total LLM Time:       5035.58 s  (wall: 1341.19 s)
+Total Tokens:         980281
+  - Input Tokens:     916033
+  - Output Tokens:    64248
+Total MDG Interventions: 206
+========================================
+Results saved to final_results.txt

@@ -1,0 +1,35 @@
+Starting LLMCER Pipeline...
+Using dataset: datasets/sigmod/alaska.csv
+Loading ground truth from datasets/sigmod/alaska_gt.csv...
+Ground truth loaded, 1484 clusters.
+Calculating vectors and similarity matrix...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 2226.69it/s]
+calculate similarity matrix done
+Thresholds: [BEST→DYNAMIC (unknown dataset)] block=0.797  merge=0.848  (mu=0.538, sigma=0.103) | S_s=9 S_d=4
+Running LSH Blocking...
+lsh done
+LSH Blocking done. Found 415 blocks.
+Running in-context clustering + hierarchical merge per block...
+Done. Final clusters: 1374
+Stats: API Calls=9821, LLM time=18017.00s, Tokens=17204182, MDG interventions=552, merge rounds=158
+========================================
+FINAL METRICS REPORT
+========================================
+Augmented ground truth with 0 singletons (total records: 12007).
+ACC:            0.4671
+FP-measure:     0.6309
+NMI:            0.8463
+ARI:            0.2243
+--------------------
+Purity:         0.5107
+Inverse Purity: 0.8251
+BCubed F1:      0.5577  (P=0.4438 R=0.7505)
+----------------------------------------
+Total API Calls:      9821
+Total LLM Time:       18017.00 s  (wall: 17459.98 s)
+Total Tokens:         17204182
+  - Input Tokens:     16855327
+  - Output Tokens:    348855
+Total MDG Interventions: 552
+========================================
+Results saved to final_results.txt

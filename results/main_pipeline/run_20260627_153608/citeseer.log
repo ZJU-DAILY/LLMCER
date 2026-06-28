@@ -1,0 +1,35 @@
+Starting LLMCER Pipeline...
+Using dataset: datasets/citesheer/Citesheer_dblp.csv
+Loading ground truth from datasets/citesheer/citesheer_gt.txt...
+Ground truth loaded, 2496 clusters.
+Calculating vectors and similarity matrix...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights:  76%|███████▌  | 78/103 [00:00<00:00, 777.40it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 948.00it/s]
+calculate similarity matrix done
+Thresholds: [BEST] block=0.7  merge=0.474  (matched 'citesheer', mu=0.151, sigma=0.107) | S_s=9 S_d=4
+Running LSH Blocking...
+lsh done
+LSH Blocking done. Found 3035 blocks.
+Running in-context clustering + hierarchical merge per block...
+Done. Final clusters: 3132
+Stats: API Calls=3037, LLM time=5074.37s, Tokens=898151, MDG interventions=225, merge rounds=2763
+========================================
+FINAL METRICS REPORT
+========================================
+Augmented ground truth with 0 singletons (total records: 9127).
+ACC:            0.9200
+FP-measure:     0.9583
+NMI:            0.9899
+ARI:            0.9233
+--------------------
+Purity:         0.9973
+Inverse Purity: 0.9223
+BCubed F1:      0.9447  (P=0.9969 R=0.8978)
+----------------------------------------
+Total API Calls:      3037
+Total LLM Time:       5074.37 s  (wall: 170.03 s)
+Total Tokens:         898151
+  - Input Tokens:     846347
+  - Output Tokens:    51804
+Total MDG Interventions: 225
+========================================
+Results saved to final_results.txt

@@ -1,0 +1,35 @@
+Starting LLMCER Pipeline...
+Using dataset: datasets/Amazon-Google/amazon_google.csv
+Loading ground truth from datasets/Amazon-Google/gt.csv...
+Ground truth loaded, 995 clusters.
+Calculating vectors and similarity matrix...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 1622.32it/s]
+calculate similarity matrix done
+Thresholds: [BEST] block=0.9  merge=0.600  (matched 'amazon-google', mu=0.245, sigma=0.118) | S_s=9 S_d=4
+Running LSH Blocking...
+lsh done
+LSH Blocking done. Found 1785 blocks.
+Running in-context clustering + hierarchical merge per block...
+Done. Final clusters: 1855
+Stats: API Calls=373, LLM time=574.98s, Tokens=82320, MDG interventions=58, merge rounds=245
+========================================
+FINAL METRICS REPORT
+========================================
+Augmented ground truth with 0 singletons (total records: 2161).
+ACC:            0.5044
+FP-measure:     0.6698
+NMI:            0.9404
+ARI:            0.1480
+--------------------
+Purity:         0.9102
+Inverse Purity: 0.5298
+BCubed F1:      0.6638  (P=0.9072 R=0.5234)
+----------------------------------------
+Total API Calls:      373
+Total LLM Time:       574.98 s  (wall: 64.64 s)
+Total Tokens:         82320
+  - Input Tokens:     76835
+  - Output Tokens:    5485
+Total MDG Interventions: 58
+========================================
+Results saved to final_results.txt
