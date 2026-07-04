@@ -1,0 +1,10 @@
+# ComEM selecting | dataset=affiliation model=gpt-4o-mini FULL n=2260 topk=10 anchor_fraction=1.0000 max_anchors_per_block=0
+  anchor selection: 339/2260 anchors from None blocks (threshold=None not_used, max_total=339, rank_mode=text_hash)
+  blocking done; running matching on 339 anchors (4 workers)...
+  selecting done in 2.9s; match edges=1599; pred clusters=1268 (gt clusters=330)
+
+  ACC=0.4991  FP-measure=0.6708  NMI=0.7991  ARI=0.4620
+  Pairwise F1=0.4639 (P=0.8830 R=0.3146)   <- paper's F1 column
+  Purity=0.9695  InvPurity=0.5128  BCubed F1=0.5694 (P=0.9565 R=0.4054)
+  [ComEM-native pairwise over candidates] P=0.9237 R=0.9001 F1=0.9117
+  API Calls=3390  InTokens=224950  OutTokens=3390  Cost=$0.0358  LLM Time=2.9s

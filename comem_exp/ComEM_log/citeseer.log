@@ -1,0 +1,10 @@
+# ComEM selecting | dataset=citeseer model=gpt-4o-mini FULL n=9127 topk=10 anchor_fraction=1.0000 max_anchors_per_block=0
+  anchor selection: 1369/9127 anchors from None blocks (threshold=None not_used, max_total=1369, rank_mode=text_hash)
+  blocking done; running matching on 1369 anchors (4 workers)...
+  selecting done in 7.7s; match edges=3821; pred clusters=6631 (gt clusters=2496)
+
+  ACC=0.5351  FP-measure=0.7019  NMI=0.9030  ARI=0.5384
+  Pairwise F1=0.5385 (P=0.9376 R=0.3777)   <- paper's F1 column
+  Purity=0.9906  InvPurity=0.5436  BCubed F1=0.6949 (P=0.9896 R=0.5354)
+  [ComEM-native pairwise over candidates] P=0.9655 R=0.9120 F1=0.9380
+  API Calls=13690  InTokens=1517059  OutTokens=13690  Cost=$0.2358  LLM Time=7.7s
