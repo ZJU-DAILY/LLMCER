@@ -1,8 +1,0 @@
-# ComEM selecting | dataset=sigmod model=gpt-5.4-mini FULL n=12007 topk=10
-  blocking done; running selecting on 12007 anchors (16 workers)...
-  selecting done in 19.1s; match edges=10831; pred clusters=3575 (gt clusters=1484)
-
-  ACC=0.5653  FP-measure=0.7214  NMI=0.9212  ARI=0.3659
-  Purity=0.9900  InvPurity=0.5674  BCubed F1=0.6363 (P=0.9864 R=0.4696)
-  [ComEM-native pairwise over candidates] P=0.9910 R=0.1719 F1=0.2930
-  API Calls=12007  InTokens=46053053  OutTokens=84139  Cost=$34.9184  LLM Time=19.1s

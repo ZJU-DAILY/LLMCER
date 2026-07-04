@@ -1,8 +1,0 @@
-# ComEM selecting | dataset=Amazon-Google model=gpt-5.4-mini FULL n=2161 topk=10
-  blocking done; running selecting on 2161 anchors (16 workers)...
-  selecting done in 236.7s; match edges=1920; pred clusters=979 (gt clusters=995)
-
-  ACC=0.8681  FP-measure=0.9153  NMI=0.9802  ARI=0.7618
-  Purity=0.8954  InvPurity=0.9361  BCubed F1=0.9072 (P=0.8867 R=0.9287)
-  [ComEM-native pairwise over candidates] P=0.8599 R=0.6811 F1=0.7601
-  API Calls=2161  InTokens=8068084  OutTokens=15613  Cost=$6.1213  LLM Time=236.7s

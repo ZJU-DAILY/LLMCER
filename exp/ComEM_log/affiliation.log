@@ -1,8 +1,0 @@
-# ComEM selecting | dataset=affiliation model=gpt-5.4-mini FULL n=2260 topk=10
-  blocking done; running selecting on 2260 anchors (16 workers)...
-  selecting done in 3.5s; match edges=2023; pred clusters=741 (gt clusters=330)
-
-  ACC=0.5438  FP-measure=0.6964  NMI=0.9011  ARI=0.3930
-  Purity=0.9637  InvPurity=0.5451  BCubed F1=0.6146 (P=0.9508 R=0.4541)
-  [ComEM-native pairwise over candidates] P=0.9407 R=0.1688 F1=0.2862
-  API Calls=2260  InTokens=5448152  OutTokens=15982  Cost=$4.1580  LLM Time=3.5s
