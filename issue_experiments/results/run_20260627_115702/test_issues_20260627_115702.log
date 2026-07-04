@@ -1,0 +1,55 @@
+# experiment: test_issues
+# command: C:\Users\haitong\Desktop\LLMCER\.venv\Scripts\python.exe C:\Users\haitong\Desktop\LLMCER\issue_experiments\test_issues.py
+# started: 20260627_115702
+
+C:\Users\haitong\Desktop\LLMCER\.venv\Lib\site-packages\lshashpy3\__init__.py:1: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+
+=== GitHub #2: elbow_method always returns max_k ===
+  OLD: argmin(distortions[1:])+1 -> k=5 (== max_k=5, always)
+[PASS] GH#2 reproduced (old returns max_k)
+  NEW: elbow_method on 3 clear blobs -> k=2
+[PASS] GH#2 fixed (finds true elbow ~3, not max_k) -- k=2
+
+=== GitHub #3: MDG uses mean intra/inter instead of min/max (Definition 1) ===
+  record 2: mean_intra=0.625 (OLD), min_intra=0.300 (Def1), max_inter=0.500
+  OLD test (mean<inter): 0.625 < 0.500 -> False (would ACCEPT, miss the error)
+  NEW test (min<inter):  0.300 < 0.500 -> True (correctly REJECTS)
+[PASS] GH#3 fixed (Def-1 min-intra rejects weak attachment) -- mdg_check returned False
+[PASS] GH#3 (clean clustering still accepted)
+
+=== GitHub #4 & #5: MDG checks real record sets + record-set regeneration ===
+  LLM was called 2 times; MDG interventions=1
+  order attempt 1: [0, 1, 2, 3, 4]
+  order attempt 2: [0, 1, 3, 2, 4] (regenerated -- not identical)
+[PASS] GH#4 fixed (MDG fired on the real record set, not slice singletons)
+[PASS] GH#5 fixed (regeneration produced a DIFFERENT order, not identical retry)
+[PASS] GH#4/#5 (final clustering passes MDG) -- final=[[0, 1], [2, 3, 4]]
+
+=== GitHub #6: merge_2 does not implement CMR / Algorithm 3 ===
+  final clusters: [[0, 1, 4, 5, 8, 9], [2, 3], [6, 7], [10, 11]]
+  merge rounds=2  (was 1 in the buggy band-sweep)
+[PASS] GH#6 fixed (hierarchical CMR reassembled split entity A across 3 sets) -- A-cluster=[0, 1, 4, 5, 8, 9]
+[PASS] GH#6 (distinct entities B/C/D kept separate -- anti-transitivity) -- #clusters=4 (expected 4)
+
+=== GitHub #7: NRS record-set creation (Algorithm 1) ===
+  block of 20 records -> 3 record sets, sizes=[9, 9, 2]
+[PASS] GH#7 (NRS partitions the block exactly once -- no loss/dup) -- placed=20 of 20
+[PASS] GH#7 (every record set respects S_s) -- sizes=[9, 9, 2]
+[PASS] GH#7 (record set is diversity-aware -- covers multiple entities) -- entities in biggest set=4
+  biggest set covers 4 distinct entities (S_d target=4)
+
+=== GitHub #8: merging across block boundaries (blocks stay isolated) ===
+  final clusters: [[0, 1], [2], [3, 4], [5]]
+[PASS] GH#8 fixed (no cluster spans two blocks) -- cross-block clusters=[]
+
+=== GitHub #9: ACC (Eq 2-3) and NMI implemented ===
+  perfect prediction -> ACC=1.000, NMI=1.000
+[PASS] GH#9 (ACC=1.0 on perfect match)
+[PASS] GH#9 (NMI=1.0 on perfect match)
+  all-in-one prediction -> ACC=0.500
+[PASS] GH#9 (ACC < 1 on bad clustering) -- ACC=0.500
+
+==================================================
+SUMMARY: 16/16 checks passed
+==================================================

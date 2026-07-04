@@ -31,7 +31,6 @@ def _aligned_labels(true_clusters, predicted_clusters):
     if not items:
         return np.array([], dtype=int), np.array([], dtype=int)
 
-    # Fresh singleton labels for items missing on a side so they never spuriously match.
     next_t = len(true_clusters)
     next_p = len(predicted_clusters)
     t_labels, p_labels = [], []
@@ -66,12 +65,10 @@ def calculate_acc(true_clusters, predicted_clusters):
     t_index = {v: i for i, v in enumerate(true_ids)}
     p_index = {v: i for i, v in enumerate(pred_ids)}
 
-    # contingency[pred, true] = #items in that predicted & true cluster
     contingency = np.zeros((len(pred_ids), len(true_ids)), dtype=np.int64)
     for tl, pl in zip(t_labels, p_labels):
         contingency[p_index[pl], t_index[tl]] += 1
 
-    # Maximise overlap -> minimise negative overlap.
     row_ind, col_ind = linear_sum_assignment(-contingency)
     correct = contingency[row_ind, col_ind].sum()
     return float(correct) / n
@@ -84,14 +81,12 @@ def calculate_nmi(true_clusters, predicted_clusters):
     return float(normalized_mutual_info_score(t_labels, p_labels))
 
 def calculate_purity(true_clusters, predicted_clusters):
-    # Normalize clusters
     true_clusters_norm = [[normalize_id(x) for x in c] for c in true_clusters]
     predicted_clusters_norm = [[normalize_id(x) for x in c] for c in predicted_clusters]
     
     total_samples = sum(len(cluster) for cluster in predicted_clusters_norm)
     total_correct = 0
 
-    # Create map for faster lookup
     true_map = {}
     for i, cluster in enumerate(true_clusters_norm):
         for item in cluster:
@@ -104,10 +99,6 @@ def calculate_purity(true_clusters, predicted_clusters):
                 true_label = true_map[sample]
                 label_count[true_label] += 1
             else:
-                # Treat items not in GT as their own unique label (or ignore?)
-                # If we assume GT is complete, items not in GT are errors or singletons.
-                # User says "singletons are correct". 
-                # If we treat unknown item as a unique label 'unknown_X':
                 label_count[f"unknown_{sample}"] += 1
                 
         if label_count:
@@ -120,11 +111,9 @@ def calculate_bcubed_metrics(true_clusters, predicted_clusters):
     """
     Calculates BCubed Precision, Recall, and F1.
     """
-    # Normalize
     true_clusters = [[normalize_id(x) for x in c] for c in true_clusters]
     predicted_clusters = [[normalize_id(x) for x in c] for c in predicted_clusters]
 
-    # Map item -> cluster index
     true_map = {}
     true_sets = [set(c) for c in true_clusters]
     for i, cluster in enumerate(true_clusters):
@@ -149,17 +138,14 @@ def calculate_bcubed_metrics(true_clusters, predicted_clusters):
         true_idx = true_map.get(item)
         pred_idx = pred_map.get(item)
         
-        true_set = true_sets[true_idx] if true_idx is not None else {item} # Treat missing in GT as singleton
-        pred_set = pred_sets[pred_idx] if pred_idx is not None else {item} # Treat missing in Pred as singleton
+        true_set = true_sets[true_idx] if true_idx is not None else {item}
+        pred_set = pred_sets[pred_idx] if pred_idx is not None else {item}
         
-        # Intersection of the cluster containing the item in Truth and Prediction
         intersection = len(true_set & pred_set)
         
-        # BCubed Precision: P(item) = |True(i) n Pred(i)| / |Pred(i)|
         if len(pred_set) > 0:
             p_sum += intersection / len(pred_set)
         
-        # BCubed Recall: R(item) = |True(i) n Pred(i)| / |True(i)|
         if len(true_set) > 0:
             r_sum += intersection / len(true_set)
             
@@ -170,14 +156,12 @@ def calculate_bcubed_metrics(true_clusters, predicted_clusters):
     return {"precision": precision, "recall": recall, "f1": f1}
 
 def calculate_inverse_purity(true_clusters, predicted_clusters):
-    # Normalize
     true_clusters_norm = [[normalize_id(x) for x in c] for c in true_clusters]
     predicted_clusters_norm = [[normalize_id(x) for x in c] for c in predicted_clusters]
     
     total_samples = sum(len(cluster) for cluster in true_clusters_norm)
     total_correct = 0
     
-    # Map pred items for speed
     pred_map = {}
     for i, cluster in enumerate(predicted_clusters_norm):
         for item in cluster:
@@ -205,8 +189,6 @@ def calculate_fp_measure(true_clusters, predicted_clusters, beta=1.0):
     if purity + inverse_purity == 0:
         return 0
 
-    # F-Beta Measure
-    # (1 + beta^2) * (P * IP) / (beta^2 * P + IP)
     beta_sq = beta ** 2
     return (1 + beta_sq) * (purity * inverse_purity) / ((beta_sq * purity) + inverse_purity)
 
@@ -216,11 +198,9 @@ def calculate_macro_purity(true_clusters, predicted_clusters):
     This gives equal weight to each cluster, regardless of size.
     Useful if user cares about 'percentage of correct clusters'.
     """
-    # Normalize clusters
     true_clusters_norm = [[normalize_id(x) for x in c] for c in true_clusters]
     predicted_clusters_norm = [[normalize_id(x) for x in c] for c in predicted_clusters]
     
-    # Create map for faster lookup
     true_map = {}
     for i, cluster in enumerate(true_clusters_norm):
         for item in cluster:
@@ -282,7 +262,6 @@ def calculate_pure_cluster_ratio(true_clusters, predicted_clusters):
                 label_count[f"unknown_{sample}"] += 1
                 
         if label_count:
-            # Check if all items belong to the same label
             if len(label_count) == 1:
                 pure_clusters += 1
                 
@@ -298,14 +277,12 @@ def convert_to_labels(clusters, n_samples):
     return labels
 
 def calculate_ari(true_clusters, predicted_clusters):
-    # Normalize
     true_clusters_norm = [[normalize_id(x) for x in c] for c in true_clusters]
     predicted_clusters_norm = [[normalize_id(x) for x in c] for c in predicted_clusters]
 
     all_samples = set(sample for cluster in true_clusters_norm for sample in cluster) | \
                   set(sample for cluster in predicted_clusters_norm for sample in cluster)
     
-    # Map to continuous integers
     sample_to_int = {sample: i for i, sample in enumerate(all_samples)}
     n_samples = len(all_samples)
     
@@ -328,7 +305,6 @@ def calculate_pairwise_metrics(true_clusters, predicted_clusters):
     """
     Calculates pairwise metrics: Accuracy, Precision, Recall, F1, FP, FN, TP, TN.
     """
-    # Normalize
     true_clusters_norm = [[normalize_id(x) for x in c] for c in true_clusters]
     predicted_clusters_norm = [[normalize_id(x) for x in c] for c in predicted_clusters]
 
@@ -341,7 +317,6 @@ def calculate_pairwise_metrics(true_clusters, predicted_clusters):
     sorted_samples = sorted(list(all_samples))
     n = len(sorted_samples)
     
-    # Create cluster maps
     true_map = {}
     for cid, cluster in enumerate(true_clusters_norm):
         for sample in cluster:
@@ -352,28 +327,17 @@ def calculate_pairwise_metrics(true_clusters, predicted_clusters):
         for sample in cluster:
             pred_map[sample] = cid
             
-    # Calculate pairs
     tp = 0
     fp = 0
     fn = 0
     tn = 0
     
-    # Using simple iteration is slow for large N (O(N^2)). 
-    # For N=1000, N^2/2 = 500,000, feasible.
     for i in range(n):
         for j in range(i + 1, n):
             u = sorted_samples[i]
             v = sorted_samples[j]
             
-            # If item not in GT, assume it's a singleton (unique label)
-            # true_map.get(u, -1) == true_map.get(v, -2) ensures that if both missing, they are NOT same.
-            # But wait, if u and v are both missing from GT, should they be considered "same"?
-            # If we assume missing = singleton, then they are same ONLY if u == v (which is impossible in loop)
-            # So missing items are never in the same cluster with anything else in GT.
             
-            # However, if u is in GT and v is NOT, they are definitely not in same cluster.
-            
-            # Unique identifiers for missing items
             true_u = true_map.get(u, f"missing_{u}")
             true_v = true_map.get(v, f"missing_{v}")
             
@@ -425,18 +389,14 @@ def calculate_tolerant_purity(true_clusters, predicted_clusters, tolerance=1):
                     label_count[tuple(true_cluster)] += 1
         
         if label_count:
-            # Find the dominant label
             dominant_label, dominant_count = label_count.most_common(1)[0]
             
-            # Check if errors are within tolerance
             cluster_size = len(pred_cluster)
             errors = cluster_size - dominant_count
             
             if errors <= tolerance:
-                # If errors are within tolerance, count ALL as correct
                 total_correct += cluster_size
             else:
-                # Otherwise, standard purity (count only dominant)
                 total_correct += dominant_count
 
     return total_correct / total_samples if total_samples > 0 else 0

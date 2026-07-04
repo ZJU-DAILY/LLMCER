@@ -1,0 +1,66 @@
+# experiment: check_datasets
+# command: C:\Users\haitong\Desktop\LLMCER\.venv\Scripts\python.exe C:\Users\haitong\Desktop\LLMCER\issue_experiments\check_datasets.py
+# started: 20260627_115702
+
+============================================================
+cora
+  data cols: ['id', 'address', 'author', 'editor', 'institution', 'month', 'note', 'pages', 'publisher', 'title', 'venue', 'volume', 'year']
+  records=1295  id-range=[0,1294]  contiguous_0..N-1=True
+  GT format: pair list, cols=['987', '990'], 17183 rows
+  GT ids: distinct=1276 range=[1,1294] out-of-data-range=0
+============================================================
+citeseer
+  data cols: ['id', 'title', 'authors', 'journal', 'month', 'year', 'publication_type']
+  records=9127  id-range=[0,9126]  contiguous_0..N-1=True
+  GT format: cluster-per-line, 2496 clusters
+  GT ids: distinct=9127 range=[0,9126] out-of-data-range=0
+============================================================
+google-DBLP
+  data cols: ['id', 'title', 'authors', 'venue', 'year']
+  records=7626  id-range=[0,7625]  contiguous_0..N-1=True
+  GT format: pair list, cols=['ltable_id', 'rtable_id'], 5347 rows
+  GT ids: distinct=7626 range=[0,7625] out-of-data-range=0
+============================================================
+walmart_amz
+  data cols: ['id', 'title', 'category', 'brand', 'modelno', 'price']
+  records=2554  id-range=[0,2553]  contiguous_0..N-1=True
+  GROUND TRUTH: none provided
+============================================================
+music20K
+  data cols: ['id', 'title', 'length', 'artist', 'album', 'year', 'language']
+  records=19375  id-range=[0,19374]  contiguous_0..N-1=True
+  GT format: cluster-per-line, 10000 clusters
+  GT ids: distinct=19375 range=[0,19374] out-of-data-range=0
+============================================================
+sigmod
+  data cols: ['id', 'description', 'brand', 'model', 'mp', 'optical_zoom', 'digital_zoom', 'screen_size', 'price', 'type']
+  records=12007  id-range=[0,12006]  contiguous_0..N-1=True
+  GT format: pair list, cols=['l_id', 'r_id'], 144440 rows
+  GT ids: distinct=12007 range=[0,12006] out-of-data-range=0
+============================================================
+song
+  data cols: ['id', 'title', 'release', 'artist_name', 'duration', 'artist_familiarity', 'artist_hotttnesss', 'year']
+  records=4854  id-range=[0,4853]  contiguous_0..N-1=True
+  GT format: cluster-per-line, 1195 clusters
+  GT ids: distinct=4854 range=[0,4853] out-of-data-range=0
+============================================================
+affiliation
+  data cols: ['id', 'affil1']
+  records=2260  id-range=[0,2259]  contiguous_0..N-1=True
+  GT format: pair list, cols=['id1', 'id2'], 32816 rows
+  GT ids: distinct=2260 range=[0,2259] out-of-data-range=0
+
+============================================================
+RECOMMENDATIONS
+============================================================
+  [KEEP] cora: data & GT ids aligned
+  [KEEP] citeseer: data & GT ids aligned
+  [KEEP] google-DBLP: data & GT ids aligned
+  [DELETE] walmart_amz: no ground-truth file (two-table set incomplete)
+  [KEEP] music20K: data & GT ids aligned
+  [KEEP] sigmod: data & GT ids aligned
+  [KEEP] song: data & GT ids aligned
+  [KEEP] affiliation: data & GT ids aligned
+
+KEEP (7): ['cora', 'citeseer', 'google-DBLP', 'music20K', 'sigmod', 'song', 'affiliation']
+DELETE (1): ['walmart_amz']

@@ -1,0 +1,13 @@
+
+======================================================================
+BATCH CONSTRUCTION-STRATEGY SUMMARY  (mock mode)   [ACC]
+======================================================================
+Dataset          similar    random  dissimilar  gradient
+----------------------------------------------------------------------
+cora              1.0000    1.0000      1.0000       YES
+======================================================================
+Strategy = how tasks are grouped into batched prompts:
+  similar    : most mutually-similar tasks together (Algorithm 5)
+  random     : random grouping
+  dissimilar : least-similar tasks together
+Expected, consistent with Algorithm 5:  similar >= random >= dissimilar

@@ -1,0 +1,10 @@
+# ComEM selecting | dataset=song model=gpt-4o-mini FULL n=4854 topk=10 anchor_fraction=1.0000 max_anchors_per_block=0
+  anchor selection: 728/4854 anchors from None blocks (threshold=None not_used, max_total=728, rank_mode=text_hash)
+  blocking done; running matching on 728 anchors (4 workers)...
+  selecting done in 5.5s; match edges=1396; pred clusters=3842 (gt clusters=1195)
+
+  ACC=0.4343  FP-measure=0.6131  NMI=0.8668  ARI=0.3933
+  Pairwise F1=0.3935 (P=0.8531 R=0.2557)   <- paper's F1 column
+  Purity=0.9821  InvPurity=0.4456  BCubed F1=0.5915 (P=0.9786 R=0.4238)
+  [ComEM-native pairwise over candidates] P=0.9241 R=0.5087 F1=0.6562
+  API Calls=7280  InTokens=819569  OutTokens=7280  Cost=$0.1273  LLM Time=5.5s

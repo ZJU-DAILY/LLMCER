@@ -32,7 +32,6 @@ def main():
         print("ERROR: no API key in .env (OPENAI_API_KEY=...). Aborting.")
         return 2
 
-    # Standard OpenAI SDK construction.
     if OPENAI_BASE_URL:
         client = OpenAI(api_key=k, base_url=OPENAI_BASE_URL)
     else:
@@ -55,7 +54,6 @@ def main():
         print("FAILED")
         print(f"  type   : {type(e).__name__}")
         print(f"  detail : {e}")
-        # Show HTTP status / body if present (helps tell 401 vs 404 vs 429).
         status = getattr(e, "status_code", None)
         if status is not None:
             print(f"  status : {status}")

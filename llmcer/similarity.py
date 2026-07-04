@@ -11,8 +11,6 @@ def preprocess(text):
 def jaccard_similarity_token(str1, str2):
     if len(str1.strip().split()) == 1 and len(str2.strip().split()) == 1 and ('.' in str1 or '.' in str2):
         try:
-            # num1 = float(next(iter(str1))) # Unused
-            # num2 = float(next(iter(str2))) # Unused
             match_length = sum(1 for a, b in zip(str1, str2) if a == b)
             max_length = max(len(str1), len(str2))
             return match_length / max_length
@@ -32,15 +30,10 @@ def jaccard_similarity_token(str1, str2):
 def calsimi(row_1, row_2, rows):
     record1 = rows[row_1]
     record2 = rows[row_2]
-    # attributes = set(record1.keys()) - {'id'} # Unused
-    # total_weighted_similarity = 0.0 # Unused
-    # This function seems incomplete in original code, stopping here as per original
     pass
 
 def get_most_simi(list1, list2, init_simi):
     max_simi = 0
-    # record_a = 0 # Unused
-    # record_b = 0 # Unused
     for a in list1:
         for b in list2:
             if init_simi[a][b] > max_simi:

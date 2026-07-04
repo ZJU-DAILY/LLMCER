@@ -1,0 +1,2 @@
+dataset,n_tasks,n_records,similar_acc,random_acc,dissimilar_acc,similar_fp,random_fp,dissimilar_fp,gradient_ok,log
+cora,9,81,1.0,1.0,1.0,1.0,1.0,1.0,True,issue_experiments\results\batch_ordering\run_mock_20260628_003433\cora.log

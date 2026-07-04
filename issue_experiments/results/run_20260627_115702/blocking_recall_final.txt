@@ -1,0 +1,57 @@
+========================================================================
+cora
+  embedding records with SBERT ...
+  records=1295  GT clusters(non-singleton)=93  true pairs=17184
+  b_t=0.800  recall(PC)=0.9067 <-- pipeline best
+========================================================================
+citeseer
+  embedding records with SBERT ...
+  records=9127  GT clusters(non-singleton)=2496  true pairs=13477
+  b_t=0.400  recall(PC)=0.9184 <-- pipeline best
+========================================================================
+google-DBLP
+  embedding records with SBERT ...
+  records=7626  GT clusters(non-singleton)=2351  true pairs=13763
+  b_t=0.500  recall(PC)=0.8827 <-- pipeline best
+========================================================================
+music20K
+  embedding records with SBERT ...
+  records=19375  GT clusters(non-singleton)=5000  true pairs=16250
+  b_t=0.400  recall(PC)=0.9395 <-- pipeline best
+========================================================================
+sigmod
+  embedding records with SBERT ...
+  records=12007  GT clusters(non-singleton)=1484  true pairs=144440
+  b_t=0.800  recall(PC)=0.9499 <-- pipeline best
+========================================================================
+song
+  embedding records with SBERT ...
+  records=4854  GT clusters(non-singleton)=1195  true pairs=8588
+  b_t=0.300  recall(PC)=0.9397 <-- pipeline best
+========================================================================
+affiliation
+  embedding records with SBERT ...
+  records=2260  GT clusters(non-singleton)=330  true pairs=16795
+  b_t=0.400  recall(PC)=0.9012 <-- pipeline best
+========================================================================
+walmart-amazon
+  embedding records with SBERT ...
+  records=1808  GT clusters(non-singleton)=846  true pairs=1092
+  b_t=0.100  recall(PC)=0.9460 <-- pipeline best
+
+========================================
+BLOCKING RECALL  (at best b_t per dataset)
+========================================
+Dataset          b_t    Recall
+----------------------------------------
+cora           0.800    0.9067
+citeseer       0.400    0.9184
+google-DBLP    0.500    0.8827
+music20K       0.400    0.9395
+sigmod         0.800    0.9499
+song           0.300    0.9397
+affiliation    0.400    0.9012
+walmart-amazon 0.100    0.9460
+========================================
+Recall = Pair Completeness: fraction of true matching pairs kept in a block.
+End-to-end recall is upper-bounded by this value.
