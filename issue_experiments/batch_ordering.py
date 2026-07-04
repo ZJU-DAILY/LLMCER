@@ -74,7 +74,6 @@ DATASETS = {
     "walmart-amazon": ("datasets/Walmart_Amazon/walmart_amazon.csv", "datasets/Walmart_Amazon/gt.csv"),
 }
 
-# Per-dataset LSH block_threshold used to form tasks (mirrors run_pipeline 'best').
 BEST_BLOCK = {'cora': 0.90, 'song': 0.70, 'citesheer': 0.70, 'google-dblp': 0.70,
               'music20k': 0.70, 'amazon-google': 0.90, 'affiliation': 0.698,
               'walmart_amazon': 0.487}
@@ -90,7 +89,6 @@ BATCH_PREPROMPT = (
 )
 
 
-# --------------------------- prompt / LLM ---------------------------------
 def build_batched_prompt(task_order, task_records, df):
     from llmcer.data_utils import get_prompt_from_indices
     parts = [BATCH_PREPROMPT]
@@ -103,8 +101,6 @@ def build_batched_prompt(task_order, task_records, df):
 def call_real_batch(prompt):
     from llmcer.llm_interaction import client
     from llmcer.config import OPENAI_MODEL
-    # temperature omitted: the configured reasoning-style model rejects
-    # temperature=0; the client already injects reasoning_effort='none'.
     completion = client.chat.completions.create(
         model=OPENAI_MODEL,
         messages=[
@@ -145,7 +141,6 @@ class MockBatchOracle:
         return result
 
 
-# --------------------------- batch construction ---------------------------
 def task_similarity(a, b, task_records, simi):
     """Similarity between two tasks = max pairwise record similarity."""
     return max(simi[i][j] for i in task_records[a] for j in task_records[b])
@@ -162,7 +157,6 @@ def build_batches(strategy, task_ids, task_sim, batch_size, seed):
     """
     ids = list(task_ids)
     if strategy == "random":
-        # deterministic shuffle (no Math.random): rotate + stride by seed
         k = (seed * 7 + 3) % max(1, len(ids))
         ids = ids[k:] + ids[:k]
         ids = ids[::-1] if seed % 2 == 0 else ids
@@ -171,14 +165,11 @@ def build_batches(strategy, task_ids, task_sim, batch_size, seed):
     want_max = (strategy == "similar")
     remaining = set(ids)
     batches = []
-    # seed order is deterministic (sorted) so similar/dissimilar are reproducible
     seed_order = sorted(remaining)
     while remaining:
-        # pick the next unused seed task
         anchor = next(t for t in seed_order if t in remaining)
         batch = [anchor]; remaining.discard(anchor)
         while len(batch) < batch_size and remaining:
-            # choose remaining task with max/min similarity to the current batch
             def score(t):
                 return max(task_sim[(min(t, b), max(t, b))] for b in batch)
             pick = (max if want_max else min)(remaining, key=score)
@@ -212,7 +203,6 @@ def pooled_pred(per_task_all, pool_records):
     return pred
 
 
-# --------------------------- per-dataset run ------------------------------
 def run_dataset(name, args, session_dir):
     import numpy as np
     from llmcer.data_utils import get_ground_truth
@@ -248,7 +238,6 @@ def run_dataset(name, args, session_dir):
         if r not in entity_of:
             entity_of[r] = nxt; nxt += 1
 
-    # ----- task pool: real LSH blocking + NRS, one record set per block --------
     pl = data_rel.lower()
     block_threshold, matched = None, None
     for key, thr in BEST_BLOCK.items():
@@ -281,7 +270,6 @@ def run_dataset(name, args, session_dir):
     pool_records = [r for t in task_ids for r in task_records[t]]
     out(f"  pool: {len(task_ids)} tasks, {len(pool_records)} records total")
 
-    # GT restricted to the pool
     gt_pool = []
     for c in full_gt:
         m = [int(r) for r in c if int(r) in pool_records]
@@ -292,7 +280,6 @@ def run_dataset(name, args, session_dir):
         if r not in covered:
             gt_pool.append([r])
 
-    # precompute task-task similarity
     task_sim = {}
     for a in range(len(task_ids)):
         for b in range(a + 1, len(task_ids)):

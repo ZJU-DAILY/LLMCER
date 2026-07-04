@@ -27,7 +27,6 @@ def elbow_method(embeddings, max_k=5):
     upper = min(max_k, n)
     K = list(range(1, upper + 1))
     if len(K) <= 2:
-        # Not enough points to detect a knee; default to a 2-way split when possible.
         return min(2, n)
 
     distortions = []
@@ -38,19 +37,14 @@ def elbow_method(embeddings, max_k=5):
 
     distortions = np.asarray(distortions, dtype=float)
 
-    # Degenerate case: identical points -> all distortions ~0 -> no real elbow.
     if distortions[0] <= 1e-12:
         return 1
 
-    # Geometric knee: distance of each (k, distortion) point from the chord
-    # joining the first and last points. The k with the largest distance is the
-    # elbow. Normalise both axes to [0, 1] so the two dimensions are comparable.
     x = np.asarray(K, dtype=float)
     x_norm = (x - x[0]) / (x[-1] - x[0])
     y = distortions
     y_norm = (y - y.min()) / (y.max() - y.min() + 1e-12)
 
-    # Line from (x_norm[0], y_norm[0]) to (x_norm[-1], y_norm[-1]).
     x0, y0 = x_norm[0], y_norm[0]
     x1, y1 = x_norm[-1], y_norm[-1]
     dx, dy = (x1 - x0), (y1 - y0)
@@ -131,8 +125,6 @@ def lsh_block(vectors, data, similarity_threshold):
     for component in components:
         valid_indices = [idx for idx in component if idx is not None and 0 <= idx < len(data)]
         if valid_indices:
-            # Assuming data is a DataFrame or list where we can get items by index
-            # If data is DataFrame:
             if hasattr(data, 'iloc'):
                 cluster = data.iloc[valid_indices, 0].tolist()
             else:
@@ -175,15 +167,12 @@ def mdg_check(clusters, similarity_matrix):
 
     for i, current_cluster in enumerate(valid_clusters):
         for r_j in current_cluster:
-            # 1. intra = MINIMUM similarity to same-cluster peers (Definition 1).
             intra_sims = [similarity_matrix[r_j][r_k]
                           for r_k in current_cluster if r_k != r_j]
             if not intra_sims:
-                # Singleton record: no intra pair to violate. Skip.
                 continue
             min_intra_sim = min(intra_sims)
 
-            # 2. inter = MAXIMUM similarity to records in any OTHER cluster.
             max_inter_sim = -float('inf')
             for k, other_cluster in enumerate(valid_clusters):
                 if i == k:
@@ -193,7 +182,6 @@ def mdg_check(clusters, similarity_matrix):
                     if s > max_inter_sim:
                         max_inter_sim = s
 
-            # 3. Reject if a record is closer to another cluster than to its own.
             if max_inter_sim > -float('inf') and min_intra_sim < max_inter_sim:
                 return False
 

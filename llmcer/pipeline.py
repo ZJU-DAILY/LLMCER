@@ -18,7 +18,6 @@ and O(|R|*b) complexity (this fixes the previous global-merge behaviour).
 import warnings
 from concurrent.futures import ThreadPoolExecutor
 
-# Filter sklearn ConvergenceWarning
 from sklearn.exceptions import ConvergenceWarning
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
@@ -60,10 +59,8 @@ def process_block(block, vectors, simi_matrix, df, S_s=SET_SIZE, S_d=SET_DIVERSI
     if len(block) == 1:
         return [block], stats
 
-    # 1. NRS: partition the block into record sets of size <= S_s.
     record_sets = create_record_sets(block, vectors, simi_matrix, S_s, S_d)
 
-    # 2. In-context cluster each record set (with MDG + regeneration).
     clustered_sets = []
     for rs in record_sets:
         if not rs:
@@ -75,9 +72,6 @@ def process_block(block, vectors, simi_matrix, df, S_s=SET_SIZE, S_d=SET_DIVERSI
         _merge_stats(stats, s)
         clustered_sets.append(clusters)
 
-    # 3. CMR: hierarchically merge clusters across record sets within this block.
-    #    The merge rounds also in-context cluster representative records; per
-    #    Algorithm 4 line 9 these outputs are MDG-checked / regenerated too.
     def _llm_cluster_fn(record_ids, frame):
         return in_context_cluster(record_ids, frame, simi_matrix)
 

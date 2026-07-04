@@ -82,24 +82,20 @@ def _pack_next_round(round_sets, reps, similarity_matrix, S_s):
     all_keys = [(si, ci) for si in range(K) for ci in range(len(round_sets[si]))]
     used = set()
 
-    # Process anchors in a stable order so packing is deterministic.
     next_sets = []
     for anchor in all_keys:
         if anchor in used:
             continue
         used.add(anchor)
         new_rs = [anchor]
-        src_sets = {anchor[0]}          # original record sets already represented
+        src_sets = {anchor[0]}
         anchor_rep = reps[anchor]
 
-        # Greedily add the most-similar unselected clusters from OTHER record
-        # sets until the set is full (S_s) or no candidate remains.
         while len(new_rs) < S_s:
             best_key, best_sim = None, -float('inf')
             for key in all_keys:
                 if key in used or key[0] in src_sets:
                     continue
-                # similarity to the closest cluster already in this new set
                 s = max(_cluster_similarity(reps[k], reps[key], similarity_matrix)
                         for k in new_rs)
                 if s > best_sim:
@@ -147,7 +143,6 @@ def cluster_merge(initial_record_sets, vectors, similarity_matrix, df,
         stats['in_tokens'] += s.get('in_tokens', 0)
         stats['out_tokens'] += s.get('out_tokens', 0)
 
-    # round_sets[i] = list of clusters (each a list of original indices)
     round_sets = [[list(c) for c in rs if c] for rs in initial_record_sets]
     round_sets = [rs for rs in round_sets if rs]
 
@@ -158,15 +153,11 @@ def cluster_merge(initial_record_sets, vectors, similarity_matrix, df,
         if len(all_clusters) <= 1:
             return all_clusters, stats
 
-        # representatives for every cluster in the current round
         reps = {}
         for si, rs in enumerate(round_sets):
             for ci, c in enumerate(rs):
                 reps[(si, ci)] = representative_of(c, vectors)
 
-        # Small enough to cluster all representatives in ONE record set: do so,
-        # but keep looping -- a single pass may leave >1 cluster that a further
-        # round could still merge, so we only stop when a round changes nothing.
         if len(all_clusters) <= S_s:
             rep_ids = [representative_of(c, vectors) for c in all_clusters]
             rep_to_cluster = {rid: all_clusters[i] for i, rid in enumerate(rep_ids)}
@@ -174,11 +165,10 @@ def cluster_merge(initial_record_sets, vectors, similarity_matrix, df,
             _accumulate(s)
             merged = _merge_from_groups(groups, rep_to_cluster)
             if len(merged) >= len(all_clusters):
-                return merged, stats          # nothing merged -> converged
-            round_sets = [[c] for c in merged]  # each merged cluster -> own set
+                return merged, stats
+            round_sets = [[c] for c in merged]
             continue
 
-        # Build next-round record sets (similarity-driven packing, Algorithm 3).
         next_keys = _pack_next_round(round_sets, reps, similarity_matrix, S_s)
 
         new_round_sets = []
@@ -188,7 +178,6 @@ def cluster_merge(initial_record_sets, vectors, similarity_matrix, df,
             rep_to_cluster = {reps[k]: round_sets[k[0]][k[1]] for k in rs_keys}
 
             if len(rep_ids) <= 1:
-                # singleton record set -> nothing to merge, carries through
                 new_round_sets.append([rep_to_cluster[rep_ids[0]]] if rep_ids else [])
                 continue
 
@@ -197,14 +186,11 @@ def cluster_merge(initial_record_sets, vectors, similarity_matrix, df,
             merged = _merge_from_groups(groups, rep_to_cluster)
             if len(merged) < len(rep_ids):
                 any_merge = True
-            # Each merged cluster becomes its own record set next round, so a
-            # cluster can keep merging with clusters from yet other sets.
             for c in merged:
                 new_round_sets.append([c])
 
         round_sets = [rs for rs in new_round_sets if rs]
 
-        # Exit condition: a full round merged nothing.
         if not any_merge:
             break
 
@@ -233,7 +219,6 @@ def _merge_from_groups(groups, rep_to_cluster):
         if combined:
             merged.append(combined)
 
-    # any representative not mentioned by the LLM survives as its own cluster
     for rep, cluster in rep_to_cluster.items():
         if rep not in seen:
             merged.append(list(cluster))

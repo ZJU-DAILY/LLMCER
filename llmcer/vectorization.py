@@ -13,7 +13,6 @@ def vectorize_data(text):
 def cal_total_simi_vector(data_file_path, model_file=EMBEDDING_MODEL):
     model = SentenceTransformer(model_file)
     
-    # Try reading with utf-8, fallback to MacRoman if needed, but prefer utf-8 for converted files
     try:
         data = pd.read_csv(data_file_path, encoding="utf-8")
     except UnicodeDecodeError:
@@ -23,9 +22,6 @@ def cal_total_simi_vector(data_file_path, model_file=EMBEDDING_MODEL):
     id_col = get_id_column(data)
 
     def combine_attributes(row):
-        # Exclude ID column if it exists, otherwise use all columns
-        # Original code used row[1:] assuming ID is first. 
-        # Better approach: drop ID column then join.
         if id_col and id_col in row:
              return ' '.join(str(value) for key, value in row.items() if key != id_col)
         return ' '.join(str(value) for value in row)

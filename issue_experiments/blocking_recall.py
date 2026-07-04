@@ -31,30 +31,21 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Datasets with usable ground truth (the KEEP set). Paper name in comment.
 DATASETS = {
-    "cora":        ("datasets/cora/cora.csv",                "datasets/cora/gt.csv"),          # Cora
-    "citeseer":    ("datasets/citesheer/Citesheer_dblp.csv", "datasets/citesheer/citesheer_gt.txt"),  # CiteSeer
-    "google-DBLP": ("datasets/google-DBLP/data.csv",         "datasets/google-DBLP/gt.csv"),   # DG
-    "music20K":    ("datasets/music20K/music20K.csv",        "datasets/music20K/ground_truth.txt"),    # Music
-    "sigmod":      ("datasets/sigmod/alaska.csv",            "datasets/sigmod/alaska_gt.csv"), # Alaska
-    "song":        ("datasets/song/songs.csv",              "datasets/song/gt.txt"),           # Song
-    "affiliation": ("datasets/affiliation/new_affi_data.csv","datasets/affiliation/new_mapping.csv"),  # AS
-    # Walmart-Amazon: single-table version walmart_amazon.csv (1808 records,
-    # 0-based id) + gt.csv pair list. The GT ids align exactly with this file
-    # (NOT tableA.csv, which is the larger raw dump).
-    "walmart-amazon": ("datasets/Walmart_Amazon/walmart_amazon.csv", "datasets/Walmart_Amazon/gt.csv"),  # WA
+    "cora":        ("datasets/cora/cora.csv",                "datasets/cora/gt.csv"),
+    "citeseer":    ("datasets/citesheer/Citesheer_dblp.csv", "datasets/citesheer/citesheer_gt.txt"),
+    "google-DBLP": ("datasets/google-DBLP/data.csv",         "datasets/google-DBLP/gt.csv"),
+    "music20K":    ("datasets/music20K/music20K.csv",        "datasets/music20K/ground_truth.txt"),
+    "sigmod":      ("datasets/sigmod/alaska.csv",            "datasets/sigmod/alaska_gt.csv"),
+    "song":        ("datasets/song/songs.csv",              "datasets/song/gt.txt"),
+    "affiliation": ("datasets/affiliation/new_affi_data.csv","datasets/affiliation/new_mapping.csv"),
+    "walmart-amazon": ("datasets/Walmart_Amazon/walmart_amazon.csv", "datasets/Walmart_Amazon/gt.csv"),
 }
 
-# Per-dataset RECALL-AWARE best block_threshold: among swept thresholds, the one
-# with the highest reduction ratio whose Pair Completeness (recall) >= 0.85
-# (see issue_experiments/pick_threshold.py). This is the operating point we
-# report for the blocking-recall question (reviewer issue #2): blocking should
-# not silently discard true matches, so we choose b_t to keep recall high.
 BEST_THR = {
     "cora": 0.80, "song": 0.30, "citeseer": 0.40, "google-DBLP": 0.50,
     "music20K": 0.40, "affiliation": 0.40, "sigmod": 0.80,
-    "walmart-amazon": 0.10,  # hard product-matching set; recall ~0.89 at b_t=0.10
+    "walmart-amazon": 0.10,
 }
 
 SWEEP = [0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90]
@@ -100,7 +91,6 @@ def pair_metrics(blocks, gt_clusters, n_records):
         if m < 2:
             continue
         true_total += m * (m - 1) // 2
-        # group this cluster's members by the block they fell into
         bc = Counter(block_of.get(int(r), f"__miss_{r}") for r in cluster)
         for cnt in bc.values():
             if cnt >= 2:
@@ -146,10 +136,8 @@ def run_dataset(name, do_sweep=True):
         m = pair_metrics(blocks, gt, n)
         tag = " <-- pipeline best" if abs(thr - best) < 1e-9 else ""
         rows.append((thr, m, tag))
-        # Reviewer issue #2 only asks for recall -> report recall only.
         print(f"  b_t={thr:.3f}  recall(PC)={m['PC']:.4f}{tag}")
 
-    # return the best-threshold row for the summary table
     best_row = next(m for thr, m, _ in rows if abs(thr - best) < 1e-9)
     return name, best, best_row
 
@@ -168,7 +156,6 @@ def main():
         except Exception as e:
             print(f"  ERROR on {nm}: {type(e).__name__}: {e}")
 
-    # Reviewer issue #2 asks only for candidate-set recall -> report recall only.
     print("\n" + "=" * 40)
     print("BLOCKING RECALL  (at best b_t per dataset)")
     print("=" * 40)

@@ -85,13 +85,11 @@ def main():
     print(f"Embedding model: {EMBEDDING_MODEL}")
     print(f"LLM: {OPENAI_MODEL}  | thresholds block={BLOCK_THRESHOLD} S_s={SET_SIZE} S_d={SET_DIVERSITY}")
 
-    # 1. Ground truth (full), then sample whole entities down to ~--records.
     full_gt = get_ground_truth(gt_path)
     print(f"Full ground truth: {len(full_gt)} non-singleton clusters")
 
     keep = sample_records(full_gt, args.records, args.seed) if args.records else None
 
-    # 2. Real embeddings + similarity for the FULL dataset, then subset.
     print("Embedding records with SBERT ...")
     t0 = time.time()
     vectors_all, simi_all, data = cal_total_simi_vector(data_path)
@@ -105,37 +103,30 @@ def main():
     print(f"Using {len(keep_idx)} records "
           f"({'full dataset' if args.records == 0 else f'sampled ~{args.records}'}).")
 
-    # Remap kept original indices -> contiguous 0..m-1 so the pipeline's
-    # index space stays dense (vectors/simi/df are all re-indexed together).
     remap = {orig: new for new, orig in enumerate(keep_idx)}
     import numpy as _np
     vectors = [vectors_all[i] for i in keep_idx]
     simi = _np.array(simi_all)[_np.ix_(keep_idx, keep_idx)]
     sub_df = data.iloc[keep_idx].reset_index(drop=True)
 
-    # Ground truth restricted & remapped to the subset.
     gt_sub = []
     for c in full_gt:
         members = [remap[r] for r in c if r in remap]
         if members:
             gt_sub.append(members)
-    # add singletons for kept records not covered by GT pairs
     covered = {r for c in gt_sub for r in c}
     for new in range(len(keep_idx)):
         if new not in covered:
             gt_sub.append([new])
 
-    # 3. Blocking on the subset.
     blocks = lsh_block(vectors, sub_df, BLOCK_THRESHOLD)
     print(f"LSH blocking -> {len(blocks)} blocks")
 
-    # 4. Full pipeline with REAL LLM calls.
     print("Running pipeline with REAL LLM calls (this costs API tokens) ...")
     t0 = time.time()
     clusters, stats = run_blocks(vectors, simi, blocks, sub_df, parallel=False)
     wall = time.time() - t0
 
-    # 5. Metrics.
     acc = calculate_acc(gt_sub, clusters)
     fp = calculate_fp_measure(gt_sub, clusters)
     nmi = calculate_nmi(gt_sub, clusters)

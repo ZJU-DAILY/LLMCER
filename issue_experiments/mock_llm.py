@@ -53,7 +53,6 @@ class NoisyOracleLLM:
         clusters = [list(v) for v in groups.values()]
 
         if len(clusters) >= 2 and self.rng.random() < self.error_rate:
-            # Merge two distinct-entity clusters -> a misclustering.
             clusters[0].extend(clusters[1])
             del clusters[1]
 

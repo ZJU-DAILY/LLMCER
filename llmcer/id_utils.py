@@ -12,7 +12,6 @@ def get_id_column(df):
     if 'id' in df.columns:
         return 'id'
     
-    # Case-insensitive search
     for col in df.columns:
         if str(col).lower() == 'id':
             return col

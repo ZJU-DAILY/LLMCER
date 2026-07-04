@@ -35,8 +35,6 @@ def build_synthetic(n_entities=12, max_dup=4, dim=16, seed=7):
 
 
 def main():
-    # NOTE: deliberately does NOT import llmcer.vectorization -- this test uses
-    # synthetic vectors and needs neither SBERT weights nor the transformers lib.
     from sklearn.metrics.pairwise import cosine_similarity
     from llmcer.pipeline import run_blocks
     from llmcer.metrics import calculate_acc, calculate_fp_measure
@@ -46,13 +44,11 @@ def main():
     n = len(vectors)
     S = cosine_similarity(vectors)
 
-    # Ground truth clusters
     gt = {}
     for r, e in entity_of.items():
         gt.setdefault(e, []).append(r)
     ground_truth = [sorted(v) for v in gt.values()]
 
-    # One block containing everything (exercise NRS splitting + CMR merging).
     blocks = [list(range(n))]
 
     oracle = OracleLLM(entity_of)
@@ -72,8 +68,6 @@ def main():
 
     ok = acc >= 0.999
     if not ok:
-        # Diagnose: show entities that ended up split across multiple predicted
-        # clusters (these are the ones CMR failed to merge).
         pred_of = {}
         for ci, c in enumerate(clusters):
             for r in c:

@@ -48,7 +48,6 @@ def pick_elements(list1, list2, n=2):
     if combined_length <= n:
         return list1 + list2
     
-    # Ensure at least one element from each list
     if len(list1) == 0 or len(list2) == 0:
         raise ValueError("Both lists must contain at least one element")
     result = [random.choice(list1), random.choice(list2)]
@@ -58,7 +57,6 @@ def pick_elements(list1, list2, n=2):
     combined_list.remove(result[0])
     combined_list.remove(result[1])
     
-    # Randomly choose the remaining elements
     result += random.sample(combined_list, remaining_slots)
     
     return result

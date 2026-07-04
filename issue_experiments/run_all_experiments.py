@@ -27,16 +27,13 @@ from datetime import datetime
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 RESULTS = os.path.join(HERE, "results")
-PYTHON = sys.executable  # the venv python running this script
+PYTHON = sys.executable
 
-# (name, args, needs_llm). args are passed to the script.
 EXPERIMENTS = [
     ("check_datasets",   ["check_datasets.py"],                 False),
     ("test_issues",      ["test_issues.py"],                    False),
     ("test_end_to_end",  ["test_end_to_end.py"],                False),
-    # blocking recall: report ONLY the best-b_t row per dataset (--no-sweep).
     ("blocking_recall",  ["blocking_recall.py", "--no-sweep"],  False),
-    # real-LLM experiment, skipped unless --with-llm:
     ("real_cora",        ["test_real_dataset.py", "--dataset", "cora", "--records", "40"], True),
 ]
 
@@ -64,10 +61,7 @@ def main():
                     help="also run real-LLM experiments (needs OPENAI_API_KEY)")
     args = ap.parse_args()
 
-    # NOTE: argless datetime.now() is fine in a plain script (only forbidden in
-    # Workflow scripts); we need a real wall-clock stamp for the log filenames.
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    # Each session gets its own folder so logs are packaged together.
     session_dir = os.path.join(RESULTS, f"run_{ts}")
     os.makedirs(session_dir, exist_ok=True)
 

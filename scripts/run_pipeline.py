@@ -5,7 +5,6 @@ import time
 import pandas as pd
 import numpy as np
 
-# Add parent directory to path to import llmcer
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from llmcer.config import (DATASET_PATH, GROUND_TRUTH_PATH, OPENAI_MODEL,
@@ -34,14 +33,12 @@ def convert_xlsx_to_csv(xlsx_path):
 def main():
     print("Starting LLMCER Pipeline...")
 
-    # 0. Prepare Data
     if DATASET_PATH.endswith('.xlsx'):
         dataset_csv_path = convert_xlsx_to_csv(DATASET_PATH)
     else:
         dataset_csv_path = DATASET_PATH
     print(f"Using dataset: {dataset_csv_path}")
 
-    # Load Ground Truth
     print(f"Loading ground truth from {GROUND_TRUTH_PATH}...")
     try:
         ground_truth = get_ground_truth(GROUND_TRUTH_PATH)
@@ -50,25 +47,18 @@ def main():
         print(f"Warning: Could not load ground truth: {e}")
         ground_truth = []
 
-    # 1. Vectorization & Similarity Matrix
     print("Calculating vectors and similarity matrix...")
     vectors, simi_matrix, data = cal_total_simi_vector(dataset_csv_path)
 
-    # Per-dataset best block_threshold mapping (from sweep experiments).
-    # Match by substring in DATASET_PATH (case-insensitive). Datasets NOT in
-    # this map fall through to dynamic threshold (mu + 2.5*sigma).
     BEST_BLOCK_PER_DATASET = {
-        # key (lowercased substring of path) -> best block_threshold
         'cora':           0.90,
         'song':           0.70,
         'citesheer':      0.70,
-        'google-dblp':    0.70,   # match BEFORE plain 'google'
+        'google-dblp':    0.70,
         'music20k':       0.70,
         'amazon-google':  0.90,
-        # The next two were best in DYNAMIC mode; hardcode the empirical optimum
-        # (= mu + 2.5*sigma on that specific dataset) so 'best' is deterministic.
-        'affiliation':    0.698,  # AS dataset, dynamic value
-        'walmart_amazon': 0.487,  # dynamic value
+        'affiliation':    0.698,
+        'walmart_amazon': 0.487,
     }
     def _best_threshold_for(path):
         p = path.lower()
@@ -77,10 +67,6 @@ def main():
                 return key, thr
         return None, None
 
-    # Threshold mode:
-    #   'best'    (default) - lookup per-dataset best, fall back to dynamic
-    #   'dynamic'           - always mu + k*sigma
-    #   'fixed'             - use config.py BLOCK_THRESHOLD
     threshold_mode = os.environ.get("THRESHOLD_MODE", "best").lower()
     sim_mean = float(np.mean(simi_matrix))
     sim_std = float(np.std(simi_matrix))
@@ -101,7 +87,6 @@ def main():
               f"separation={SEPARATION_THRESHOLD}  merge={merge_threshold}  "
               f"| S_s={SET_SIZE} S_d={SET_DIVERSITY}")
     else:
-        # mode == 'dynamic'  OR  'best' but dataset unknown -> dynamic
         block_threshold = min(sim_mean + 2.5 * sim_std, 0.99)
         merge_threshold = min(sim_mean + 3.0 * sim_std, 0.90)
         tag = "DYNAMIC" if threshold_mode == "dynamic" else "BEST→DYNAMIC (unknown dataset)"
@@ -110,7 +95,6 @@ def main():
               f"(mu={sim_mean:.3f}, sigma={sim_std:.3f}) "
               f"| S_s={SET_SIZE} S_d={SET_DIVERSITY}")
 
-    # Env-var override (last word, applies to any mode)
     _bt_env = os.environ.get("BLOCK_THRESHOLD")
     if _bt_env:
         block_threshold = float(_bt_env)
@@ -120,12 +104,10 @@ def main():
         merge_threshold = float(_mt_env)
         print(f"  [override] MERGE_THRESHOLD set to {merge_threshold} via env")
 
-    # 2. Blocking (LSH) -- hard partition into blocks.
     print("Running LSH Blocking...")
     blocks = lsh_block(vectors, data, block_threshold)
     print(f"LSH Blocking done. Found {len(blocks)} blocks.")
 
-    # 3-4. Per-block: NRS -> in-context clustering (+MDG) -> CMR (Algorithm 4).
     print("Running in-context clustering + hierarchical merge per block...")
     t0 = time.time()
     final_result, stats = run_blocks(vectors, simi_matrix, blocks, data,
@@ -136,14 +118,11 @@ def main():
           f"Tokens={stats['tokens']}, MDG interventions={stats['mdg_fails']}, "
           f"merge rounds={stats['rounds']}")
 
-    # 5. Metrics
     print("=" * 40)
     print("FINAL METRICS REPORT")
     print("=" * 40)
 
     if ground_truth:
-        # Augment Ground Truth with singletons for any record not in GT pairs,
-        # so every record participates in the evaluation exactly once.
         if hasattr(data, 'iloc'):
             id_col = get_id_column(data)
             all_ids = data[id_col].tolist() if id_col else data.iloc[:, 0].tolist()
@@ -172,7 +151,6 @@ def main():
         ari = calculate_ari(ground_truth, final_result)
         bcubed = calculate_bcubed_metrics(ground_truth, final_result)
 
-        # ACC and FP-measure are the paper's primary metrics (Section 6.1).
         print(f"ACC:            {acc:.4f}")
         print(f"FP-measure:     {f_measure:.4f}")
         print(f"NMI:            {nmi:.4f}")
@@ -194,7 +172,6 @@ def main():
     print(f"Total MDG Interventions: {stats['mdg_fails']}")
     print("=" * 40)
 
-    # Save results
     output_path = "final_results.txt"
     with open(output_path, "w") as f:
         for cluster in final_result:

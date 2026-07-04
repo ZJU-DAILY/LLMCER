@@ -13,16 +13,11 @@ from llmcer.utils import UnionFind, pick_elements
 from llmcer.similarity import get_most_simi, is_act
 from llmcer.clustering import mdg_check, find_misclustered_records
 
-# When OPENAI_BASE_URL is set (OpenAI-compatible gateway), route through it;
-# otherwise use the official api.openai.com endpoint.
 if OPENAI_BASE_URL:
     client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
 else:
     client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Monkey-patch chat.completions.create to inject reasoning_effort='none'.
-# NO RETRY (retry was observed to extend wall time massively without saving runs
-# — once packyapi enters bad state, it stays bad, retries just waste time).
 _orig_create = client.chat.completions.create
 
 def _create_no_thinking(**kwargs):
@@ -121,7 +116,6 @@ def in_context_cluster(record_ids, df, similarity_matrix, max_regen=2):
         if mdg_check(clusters, similarity_matrix):
             return clusters, stats
 
-        # MDG rejected the clustering -> regenerate the record set.
         stats['mdg_fails'] += 1
         if attempt == max_regen:
             break
@@ -139,14 +133,12 @@ def _regenerate_order(clusters, similarity_matrix):
     offenders = find_misclustered_records(clusters, similarity_matrix)
     moved = {rec for (_src, rec, _dst) in offenders}
 
-    # Lay clusters out sequentially; drop the offenders from their current spot.
     order = []
     for c in clusters:
         for r in c:
             if r not in moved:
                 order.append(r)
 
-    # Re-insert each offender right after the most inter-similar placed record.
     for (_src, rec, _dst) in offenders:
         if not order:
             order.append(rec)
@@ -225,7 +217,6 @@ def find_simi_nex(small_clusters, now_cluster, parent, ini_simi, the_max_nex):
             if ini_simi[now_cluster[i]][now_cluster[j]] >= the_max_nex:
                 pattern.append([now_cluster[i], now_cluster[j]])
     
-    # Initialize union find with indices of small_clusters
     for i in range(len(small_clusters)):
         uf.add(i)
 
@@ -258,7 +249,7 @@ def llm_seperate(data_list, df, ini_simi, the_max_nex):
     use_token = 0
     seperate_input_token = 0
     seperate_output_token = 0
-    mdg_fail_count = 0  # Counter for MDG interventions
+    mdg_fail_count = 0
     
     result_sliced = []
     number = math.ceil(len(data_list) / 10)
@@ -308,13 +299,9 @@ def llm_seperate(data_list, df, ini_simi, the_max_nex):
 
             result_tmp, complete = check_and_handle_missing_ids(one_slice, result_tmp, attempt)
             
-            # MDG Check: Misclustering Detection Guardrail
-            # Only run if structure check (missing ids) passed
             if complete:
                 is_mdg_acceptable = mdg_check(result_tmp, ini_simi)
                 if not is_mdg_acceptable:
-                    # If MDG fails, we reject this result and force a retry (if attempts left)
-                    # print(f"MDG Check Failed for slice (Attempt {attempt}). Retrying...")
                     mdg_fail_count += 1
                     complete = False
             
@@ -324,7 +311,7 @@ def llm_seperate(data_list, df, ini_simi, the_max_nex):
         for row_slice in result_tmp:
             result_sliced.append(row_slice)
             
-    parent = list(range(len(result_sliced))) # This variable is actually unused in the new logic since we use local UnionFind
+    parent = list(range(len(result_sliced)))
     array_new = find_simi_nex(result_sliced, data_list, parent, ini_simi, the_max_nex)
     return array_new, api_call_time, use_time, use_token, seperate_input_token, seperate_output_token, mdg_fail_count
 
@@ -409,7 +396,6 @@ def merge_2(clusters, simi_matrix, df, block_threshold, merge_threshold):
             answer = completion.choices[0].message.content.lower().strip() 
             if 'yes' in answer:
                 count_yes += 1
-        # Increased threshold from 0.2 to 0.5 to prevent over-merging
         if count_yes/len(selected_target) >= 0.5:
             need_merge += find_merge_cells(similarity_matrix, threshold-0.02, threshold)
     for row_in_need_merge in need_merge:
@@ -499,10 +485,6 @@ def merge(clusters, simi_matrix, df):
         if map_merge[i] == 0:
             map_rest.append(clusters[i])
     
-    # NOTE: Writing to 'nex_step.csv' was in original code. 
-    # We should probably avoid side effects if possible, but I will keep it for now or just use memory.
-    # The original code writes to csv and then reads it back to use UnionFind. 
-    # I can just use UnionFind directly.
     
     uf = UnionFind()
     ids = set()

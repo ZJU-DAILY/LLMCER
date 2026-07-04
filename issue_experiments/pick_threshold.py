@@ -14,7 +14,6 @@ the embeddings or blocker change.
 
 TARGET_PC = 0.85
 
-# (b_t, PC, PQ, F1, RR) per dataset, from the completed sweep.
 SWEEP = {
     "cora": [
         (0.30, 0.9923, 0.0207, 0.0406, 0.0184),
@@ -85,10 +84,8 @@ SWEEP = {
 def pick(rows, target_pc):
     ok = [r for r in rows if r[1] >= target_pc]
     if ok:
-        # highest RR among recall-OK thresholds
         best = max(ok, key=lambda r: r[4])
         return best, "PC>=target, max RR"
-    # fallback: max PC
     best = max(rows, key=lambda r: r[1])
     return best, "no threshold hits target; max PC fallback"
 
