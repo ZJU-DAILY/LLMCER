@@ -1,8 +1,0 @@
-# ComEM selecting | dataset=music10K model=gpt-5.4-mini FULL n=10000 topk=10
-  blocking done; running selecting on 10000 anchors (16 workers)...
-  selecting done in 1914.6s; match edges=5682; pred clusters=6578 (gt clusters=6772)
-
-  ACC=0.9662  FP-measure=0.9820  NMI=0.9964  ARI=0.9277
-  Purity=0.9729  InvPurity=0.9912  BCubed F1=0.9787 (P=0.9679 R=0.9898)
-  [ComEM-native pairwise over candidates] P=0.9498 R=0.6338 F1=0.7603
-  API Calls=18801  InTokens=95347786  OutTokens=150591  Cost=$72.1885  LLM Time=1914.6s
