@@ -11,9 +11,8 @@ Usage:
   .venv/Scripts/python.exe issue_experiments/run_all_experiments.py
   .venv/Scripts/python.exe issue_experiments/run_all_experiments.py --only blocking_recall
 
-Note: only experiments that need NO API key are run by default (issue
-validation, blocking recall, dataset audit). Real-LLM runs (test_real_dataset.py)
-are listed but skipped unless --with-llm is passed and OPENAI_API_KEY is set.
+Note: the listed experiments (dataset audit, blocking recall, block quality,
+batch-ordering mock) need NO API key and run by default.
 """
 
 import os
@@ -31,10 +30,9 @@ PYTHON = sys.executable
 
 EXPERIMENTS = [
     ("check_datasets",   ["check_datasets.py"],                 False),
-    ("test_issues",      ["test_issues.py"],                    False),
-    ("test_end_to_end",  ["test_end_to_end.py"],                False),
     ("blocking_recall",  ["blocking_recall.py", "--no-sweep"],  False),
-    ("real_cora",        ["test_real_dataset.py", "--dataset", "cora", "--records", "40"], True),
+    ("block_quality",    ["block_quality_alaska.py"],           False),
+    ("batch_ordering",   ["batch_ordering.py", "--mock", "--all"], False),
 ]
 
 
