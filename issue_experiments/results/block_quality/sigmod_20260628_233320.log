@@ -1,0 +1,12 @@
+# blocking quality (blocks-as-clusters, NO matching) | dataset=sigmod b_t=0.8 ts=20260628_233320
+# Alaska == SIGMOD camera dataset
+
+records            : 12007
+Blocks_nums        : 500   (non-singleton: 116)
+FP (FP-measure)    : 0.1511
+F1 (pairwise)      : 0.0056   (pair precision=0.0028, pair recall=0.9500)
+
+Table-4 row (Alaska):
+  Alaska & 500 & 0.151 & 0.006
+
+Note: recall (pair completeness) is reported separately in the blocking-recall experiment (Alaska/sigmod = 0.95); this run scores the blocks as clusters (no LLM matching) for the FP / F1 columns of Table 4.
