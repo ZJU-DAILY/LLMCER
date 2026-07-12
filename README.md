@@ -17,7 +17,7 @@
 *   **🔍 Two-Stage Resolution**:
     1.  **Separation**: Splits over-clustered blocks into finer groups.
     2.  **Merging**: Re-evaluates and merges similar groups to ensure high recall.
-*   **📊 Comprehensive Metrics**: Automatic calculation of **Purity**, **Inverse Purity**, and **F-Measure**(Adjusted Rand Index).
+*   **📊 Comprehensive Metrics**: Automatic calculation of **Purity**, **Inverse Purity**, and **F-Measure**.
 *   **📝 Smart Logging**: Real-time logging with timestamped files and detailed token usage statistics.
 
 ---
