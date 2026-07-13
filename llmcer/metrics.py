@@ -73,13 +73,6 @@ def calculate_acc(true_clusters, predicted_clusters):
     correct = contingency[row_ind, col_ind].sum()
     return float(correct) / n
 
-def calculate_nmi(true_clusters, predicted_clusters):
-    """Normalized Mutual Information between the two clusterings."""
-    t_labels, p_labels = _aligned_labels(true_clusters, predicted_clusters)
-    if len(t_labels) == 0:
-        return 0.0
-    return float(normalized_mutual_info_score(t_labels, p_labels))
-
 def calculate_purity(true_clusters, predicted_clusters):
     true_clusters_norm = [[normalize_id(x) for x in c] for c in true_clusters]
     predicted_clusters_norm = [[normalize_id(x) for x in c] for c in predicted_clusters]
@@ -276,30 +269,6 @@ def convert_to_labels(clusters, n_samples):
             labels[sample] = cluster_id
     return labels
 
-def calculate_ari(true_clusters, predicted_clusters):
-    true_clusters_norm = [[normalize_id(x) for x in c] for c in true_clusters]
-    predicted_clusters_norm = [[normalize_id(x) for x in c] for c in predicted_clusters]
-
-    all_samples = set(sample for cluster in true_clusters_norm for sample in cluster) | \
-                  set(sample for cluster in predicted_clusters_norm for sample in cluster)
-    
-    sample_to_int = {sample: i for i, sample in enumerate(all_samples)}
-    n_samples = len(all_samples)
-    
-    true_labels = [-1] * n_samples
-    for cid, cluster in enumerate(true_clusters_norm):
-        for sample in cluster:
-            if sample in sample_to_int:
-                true_labels[sample_to_int[sample]] = cid
-                
-    predicted_labels = [-1] * n_samples
-    for cid, cluster in enumerate(predicted_clusters_norm):
-        for sample in cluster:
-            if sample in sample_to_int:
-                predicted_labels[sample_to_int[sample]] = cid
-                
-    ari = adjusted_rand_score(true_labels, predicted_labels)
-    return ari
 
 def calculate_pairwise_metrics(true_clusters, predicted_clusters):
     """

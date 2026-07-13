@@ -1,6 +1,6 @@
 """
 Run ComEM's `selecting` strategy on the LLMCER datasets and report the SAME
-metric set LLMCER's pipeline reports (ACC / FP-measure / NMI / ARI / Purity /
+metric set LLMCER's pipeline reports (ACC / FP-measure / Purity /
 Inverse-Purity / BCubed) plus LLMCER-style efficiency stats (API calls / in-out
 tokens / time / official-priced cost).
 
@@ -252,8 +252,8 @@ def run_dataset(name, data_rel, gt_rel, args, session_dir):
     import pandas as pd
     from llmcer.data_utils import get_ground_truth
     from llmcer.config import EMBEDDING_MODEL
-    from llmcer.metrics import (calculate_acc, calculate_fp_measure, calculate_nmi,
-                                calculate_ari, calculate_purity,
+    from llmcer.metrics import (calculate_acc, calculate_fp_measure, 
+                                 calculate_purity,
                                 calculate_inverse_purity, calculate_bcubed_metrics,
                                 calculate_pairwise_metrics)
     from tqdm.contrib.concurrent import thread_map
@@ -363,8 +363,7 @@ def run_dataset(name, data_rel, gt_rel, args, session_dir):
     # ---- LLMCER metric set ----
     acc = calculate_acc(gt, pred_clusters)
     fp_measure = calculate_fp_measure(gt, pred_clusters)
-    nmi = calculate_nmi(gt, pred_clusters)
-    ari = calculate_ari(gt, pred_clusters)
+    
     purity = calculate_purity(gt, pred_clusters)
     inv_purity = calculate_inverse_purity(gt, pred_clusters)
     bcubed = calculate_bcubed_metrics(gt, pred_clusters)
@@ -381,7 +380,7 @@ def run_dataset(name, data_rel, gt_rel, args, session_dir):
 
     dec = selector.api_cost_decorator
     out("")
-    out(f"  ACC={acc:.4f}  FP-measure={fp_measure:.4f}  NMI={nmi:.4f}  ARI={ari:.4f}")
+    out(f"  ACC={acc:.4f}  FP-measure={fp_measure:.4f} ")
     out(f"  Pairwise F1={pw_f1:.4f} (P={pw_p:.4f} R={pw_r:.4f})   <- paper's F1 column")
     out(f"  Purity={purity:.4f}  InvPurity={inv_purity:.4f}  "
         f"BCubed F1={bcubed['f1']:.4f} (P={bcubed['precision']:.4f} R={bcubed['recall']:.4f})")
@@ -394,8 +393,8 @@ def run_dataset(name, data_rel, gt_rel, args, session_dir):
         dataset=name, n_records=n, n_pred_clusters=len(pred_clusters), n_gt_clusters=len(gt),
         n_anchor_instances=len(instances),
         total_anchor_instances=total_anchor_instances,
-        acc=round(acc, 4), fp_measure=round(fp_measure, 4), nmi=round(nmi, 4),
-        ari=round(ari, 4), purity=round(purity, 4), inv_purity=round(inv_purity, 4),
+        acc=round(acc, 4), fp_measure=round(fp_measure, 4),
+        purity=round(purity, 4), inv_purity=round(inv_purity, 4),
         bcubed_f1=round(bcubed["f1"], 4), bcubed_p=round(bcubed["precision"], 4),
         bcubed_r=round(bcubed["recall"], 4),
         pairwise_f1=round(pw_f1, 4), pairwise_p=round(pw_p, 4), pairwise_r=round(pw_r, 4),
@@ -468,7 +467,7 @@ def main():
 
     fields = ["dataset", "n_records", "n_pred_clusters", "n_gt_clusters",
               "n_anchor_instances", "total_anchor_instances", "acc",
-              "fp_measure", "nmi", "ari", "purity", "inv_purity", "bcubed_f1",
+              "fp_measure", "purity", "inv_purity", "bcubed_f1",
               "bcubed_p", "bcubed_r", "pairwise_f1", "pairwise_p", "pairwise_r",
               "pair_p", "pair_r", "pair_f1", "api_calls",
               "in_tokens", "out_tokens", "cost_usd", "llm_time_s", "log"]
@@ -486,15 +485,15 @@ def main():
         w("=" * 100)
         w(f"ComEM (selecting, {MODEL}) on LLMCER datasets -- FULL runs")
         w("=" * 100)
-        w(f"{'Dataset':<13}{'N':>7}{'ACC':>8}{'FP':>8}{'NMI':>8}{'ARI':>8}"
+        w(f"{'Dataset':<13}{'N':>7}{'ACC':>8}{'FP':>8}"
           f"{'Purity':>8}{'InvPur':>8}{'BCubF1':>8}{'Cost$':>8}{'Time s':>8}")
         w("-" * 100)
         for r in rows:
             w(f"{r['dataset']:<13}{r['n_records']:>7}{r['acc']:>8.4f}{r['fp_measure']:>8.4f}"
-              f"{r['nmi']:>8.4f}{r['ari']:>8.4f}{r['purity']:>8.4f}{r['inv_purity']:>8.4f}"
+              f"{r['purity']:>8.4f}{r['inv_purity']:>8.4f}"
               f"{r['bcubed_f1']:>8.4f}{r['cost_usd']:>8.4f}{r['llm_time_s']:>8.1f}")
         w("=" * 100)
-        w("Metrics match LLMCER run_pipeline: ACC / FP-measure / NMI / ARI / Purity /")
+        w("Metrics match LLMCER run_pipeline: ACC / FP-measure / Purity /")
         w("Inverse-Purity / BCubed. Efficiency: API calls / in-out tokens / cost / time")
         w("in summary.csv. FULL dataset (every record is an anchor); top-k blocking via")
         w("LLMCER's SBERT; predicted clusters = transitive closure of selecting edges.")

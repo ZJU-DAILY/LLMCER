@@ -15,8 +15,8 @@ from llmcer.vectorization import cal_total_simi_vector
 from llmcer.clustering import lsh_block
 from llmcer.pipeline import run_blocks
 from llmcer.metrics import (calculate_purity, calculate_inverse_purity,
-                            calculate_fp_measure, calculate_ari,
-                            calculate_acc, calculate_nmi,
+                            calculate_fp_measure, 
+                            calculate_acc, 
                             calculate_bcubed_metrics)
 from llmcer.id_utils import get_id_column
 
@@ -144,17 +144,14 @@ def main():
               f"(total records: {len(all_ids)}).")
 
         acc = calculate_acc(ground_truth, final_result)
-        nmi = calculate_nmi(ground_truth, final_result)
+        
         purity = calculate_purity(ground_truth, final_result)
         inv_purity = calculate_inverse_purity(ground_truth, final_result)
         f_measure = calculate_fp_measure(ground_truth, final_result)
-        ari = calculate_ari(ground_truth, final_result)
         bcubed = calculate_bcubed_metrics(ground_truth, final_result)
 
         print(f"ACC:            {acc:.4f}")
         print(f"FP-measure:     {f_measure:.4f}")
-        print(f"NMI:            {nmi:.4f}")
-        print(f"ARI:            {ari:.4f}")
         print("-" * 20)
         print(f"Purity:         {purity:.4f}")
         print(f"Inverse Purity: {inv_purity:.4f}")

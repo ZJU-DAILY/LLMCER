@@ -17,7 +17,7 @@
 *   **🔍 Two-Stage Resolution**:
     1.  **Separation**: Splits over-clustered blocks into finer groups.
     2.  **Merging**: Re-evaluates and merges similar groups to ensure high recall.
-*   **📊 Comprehensive Metrics**: Automatic calculation of **Purity**, **Inverse Purity**, **F-Measure**, and **ARI** (Adjusted Rand Index).
+*   **📊 Comprehensive Metrics**: Automatic calculation of **Purity**, **Inverse Purity**, and **F-Measure**.
 *   **📝 Smart Logging**: Real-time logging with timestamped files and detailed token usage statistics.
 
 ---
@@ -33,7 +33,7 @@ LLMCER/
 │   ├── config.py           # Centralized configuration
 │   ├── data_utils.py       # Data loading and prompt generation
 │   ├── llm_interaction.py  # OpenAI API handling & prompt engineering
-│   ├── metrics.py          # Evaluation metrics (F1, ARI, etc.)
+│   ├── metrics.py          # Evaluation metrics (F1, etc.)
 │   ├── pipeline.py         # Main orchestration logic (Separation & Merge)
 │   ├── vectorization.py    # Embedding generation (Sentence-BERT)
 │   └── ...
@@ -137,7 +137,6 @@ FINAL METRICS REPORT
 Purity:         0.9850
 Inverse Purity: 0.9920
 F-Measure:      0.9885
-ARI:            0.9750
 ----------------------------------------
 Total API Calls:     145
 Total Execution Time: 45.20 s

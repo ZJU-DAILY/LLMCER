@@ -3,7 +3,7 @@
   blocking done; running matching on 1369 anchors (4 workers)...
   selecting done in 7.7s; match edges=3821; pred clusters=6631 (gt clusters=2496)
 
-  ACC=0.5351  FP-measure=0.7019  NMI=0.9030  ARI=0.5384
+  ACC=0.5351  FP-measure=0.7019  NMI=0.7130  ARI=0.5384
   Pairwise F1=0.5385 (P=0.9376 R=0.3777)   <- paper's F1 column
   Purity=0.9906  InvPurity=0.5436  BCubed F1=0.6949 (P=0.9896 R=0.5354)
   [ComEM-native pairwise over candidates] P=0.9655 R=0.9120 F1=0.9380
