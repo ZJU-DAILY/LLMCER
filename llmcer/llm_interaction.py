@@ -20,8 +20,13 @@ else:
 
 _orig_create = client.chat.completions.create
 
+# reasoning_effort is only accepted by reasoning models (gpt-5 / o-series);
+# gpt-4o-mini and other chat models reject it with HTTP 400. Only inject it for
+# models that actually support it.
+_REASONING_MODEL_PREFIXES = ('gpt-5', 'o1', 'o3', 'o4')
 def _create_no_thinking(**kwargs):
-    if 'reasoning_effort' not in kwargs:
+    if ('reasoning_effort' not in kwargs
+            and OPENAI_MODEL.lower().startswith(_REASONING_MODEL_PREFIXES)):
         kwargs['reasoning_effort'] = 'none'
     return _orig_create(**kwargs)
 
@@ -64,6 +69,14 @@ def _call_llm_classify(record_ids, df):
     )
     elapsed = time.time() - start
     clusters = _parse_clusters(completion.choices[0].message.content)
+    # Robustness: a malformed LLM reply can, after the aggressive digit cleaning
+    # in _parse_clusters, yield spurious out-of-set indices (e.g. concatenated
+    # digits like 1,0,0,1,0 -> 10010) that later index the similarity matrix out
+    # of bounds. Keep only indices that belong to this record set; _ensure_complete
+    # re-adds any legitimate record the LLM dropped.
+    valid_ids = set(record_ids)
+    clusters = [[i for i in c if i in valid_ids] for c in clusters]
+    clusters = [c for c in clusters if c]
     stats = dict(
         api_calls=1,
         time=elapsed,
@@ -127,30 +140,31 @@ def in_context_cluster(record_ids, df, similarity_matrix, max_regen=2):
 def _regenerate_order(clusters, similarity_matrix):
     """
     Produce a new record ordering by relocating each misclustered record
-    immediately after the cluster it is most inter-similar to (Algorithm 4
-    lines 5 & 10 / Section 5.2 "Record Set Regeneration").
+    immediately AFTER the cluster with the highest inter-cluster similarity to
+    it (paper Section 5.2 "Record Set Regeneration").
+
+    find_misclustered_records already returns that target as `dst` (an index into
+    the *non-empty* clusters). We append the record to that cluster's block,
+    which puts it right after the cluster's last-ordered member and keeps every
+    cluster a contiguous unit, so same-entity records stay consecutive (the
+    ordering property §4.2 relies on). All other records are left unchanged. O(S_s).
     """
     offenders = find_misclustered_records(clusters, similarity_matrix)
     moved = {rec for (_src, rec, _dst) in offenders}
 
-    order = []
-    for c in clusters:
-        for r in c:
-            if r not in moved:
-                order.append(r)
+    # Blocks share find_misclustered_records' index space: the non-empty
+    # clusters, in order. blocks[k] holds cluster k's surviving (non-offender)
+    # records, kept contiguous.
+    valid = [c for c in clusters if c]
+    blocks = [[r for r in c if r not in moved] for c in valid]
 
-    for (_src, rec, _dst) in offenders:
-        if not order:
-            order.append(rec)
-            continue
-        best_pos, best_sim = 0, -float('inf')
-        for i, placed in enumerate(order):
-            s = similarity_matrix[rec][placed]
-            if s > best_sim:
-                best_sim, best_pos = s, i
-        order.insert(best_pos + 1, rec)
+    for (_src, rec, dst) in offenders:
+        if dst is not None and 0 <= dst < len(blocks):
+            blocks[dst].append(rec)          # immediately after the target cluster
+        else:
+            blocks.append([rec])             # degenerate: no valid target cluster
 
-    return order
+    return [r for blk in blocks for r in blk]
 
 def process_sampled_ids(df, sample_ids_list):
     execution_time = 0
