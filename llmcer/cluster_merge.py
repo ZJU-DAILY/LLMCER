@@ -49,19 +49,31 @@ def _cluster_similarity(rep_a, rep_b, similarity_matrix):
     return similarity_matrix[rep_a][rep_b]
 
 
-def _pack_next_round(round_sets, reps, similarity_matrix, S_s):
+def _pack_next_round(round_sets, reps, similarity_matrix, S_s, S_d):
     """
-    Build the next round's record sets from the current round's clusters
-    (Algorithm 3, packing the most-similar clusters across record sets).
+    Build the next round's record sets from the current round's clusters,
+    following Algorithm 3 (CMR, paper Section 5.3) faithfully.
 
-    The packing is SIMILARITY-DRIVEN, not index-driven: for each new record set
-    we pick an unselected anchor cluster and greedily add the most-similar
-    unselected clusters that come from DIFFERENT original record sets
-    (anti-transitivity -- two clusters from the same record set are never packed
-    together, since the LLM already decided they are distinct entities). This is
-    what guarantees that representatives of the same real entity, scattered
-    across record sets by NRS, end up in the same next-round record set and get
-    merged. Each new set holds up to S_s clusters.
+    Algorithm 3 builds ONE next-round record set R_next by partitioning the
+    source record sets into ``S_d`` contiguous groups of ``ceil(K/S_d)`` sets
+    each. Within a group it picks an unselected *anchor* cluster from the group's
+    first set, then for every other set in the group it adds the unselected
+    cluster *most similar to the anchor*. Concatenating the ``S_d`` groups yields
+    a record set whose diversity is ~= ``S_d``: each group is one internally
+    similar bundle, and the ``S_d`` anchors give the set its distinct entities.
+    (With ``S_d = 1`` this degenerates to a single similarity bundle -- the
+    Figure-7 "for brevity" example; the real target is ``S_d = 4``.) The step is
+    repeated until every cluster is selected exactly once.
+
+    Anti-transitivity (Problem 3 condition 2) holds by construction: the groups
+    partition the source sets, and within a group each source set contributes at
+    most one cluster, so no R_next ever holds two clusters from the same source
+    record set.
+
+    Algorithm 3 assumes ``K <= S_s`` (R_next size = K). When there are more
+    source sets than fit in one record set (K > S_s, e.g. a large block's first
+    round), we first cut the source sets into contiguous chunks of at most S_s
+    sets and apply Algorithm 3 within each chunk, so no R_next exceeds S_s.
 
     Args:
         round_sets: list (length K) of record sets; each record set is a list of
@@ -69,7 +81,8 @@ def _pack_next_round(round_sets, reps, similarity_matrix, S_s):
         reps: dict cluster-key -> representative record index. Cluster-key is
             (set_index, cluster_index).
         similarity_matrix: global similarity matrix.
-        S_s: set-size constraint (max clusters packed per new record set).
+        S_s: set-size constraint (max clusters per new record set).
+        S_d: diversity target (number of distinct entities / bundles per set).
 
     Returns:
         A list of next-round record sets, each a list of (set_index,
@@ -79,34 +92,54 @@ def _pack_next_round(round_sets, reps, similarity_matrix, S_s):
     if K == 0:
         return []
 
-    all_keys = [(si, ci) for si in range(K) for ci in range(len(round_sets[si]))]
-    used = set()
-
+    S_d = max(1, int(S_d))
+    remaining = {si: list(range(len(round_sets[si]))) for si in range(K)}
     next_sets = []
-    for anchor in all_keys:
-        if anchor in used:
-            continue
-        used.add(anchor)
-        new_rs = [anchor]
-        src_sets = {anchor[0]}
-        anchor_rep = reps[anchor]
 
-        while len(new_rs) < S_s:
-            best_key, best_sim = None, -float('inf')
-            for key in all_keys:
-                if key in used or key[0] in src_sets:
+    # K > S_s: split the source sets into contiguous chunks of <= S_s so that no
+    # R_next exceeds the set-size constraint (Algorithm 3 assumes K <= S_s).
+    for chunk_start in range(0, K, S_s):
+        chunk = list(range(chunk_start, min(chunk_start + S_s, K)))
+        m = len(chunk)
+        group_size = max(1, math.ceil(m / S_d))  # ceil(K/S_d), paper line 7
+
+        # Repeat Algorithm 3 until every cluster in this chunk is selected.
+        while any(remaining[si] for si in chunk):
+            r_next = []
+            for j in range(S_d):                       # paper line 6
+                gstart = j * group_size                # paper line 7
+                gend = min(gstart + group_size, m)
+                if gstart >= m:
+                    break
+                group_sets = chunk[gstart:gend]
+
+                # Anchor: first set in the group that still has a cluster
+                # (paper lines 8-9).
+                anchor_si = next((si for si in group_sets if remaining[si]), None)
+                if anchor_si is None:
                     continue
-                s = max(_cluster_similarity(reps[k], reps[key], similarity_matrix)
-                        for k in new_rs)
-                if s > best_sim:
-                    best_sim, best_key = s, key
-            if best_key is None:
-                break
-            used.add(best_key)
-            new_rs.append(best_key)
-            src_sets.add(best_key[0])
+                anchor_ci = remaining[anchor_si].pop(0)
+                r_next.append((anchor_si, anchor_ci))
+                anchor_rep = reps[(anchor_si, anchor_ci)]
 
-        next_sets.append(new_rs)
+                # For each remaining set in the group, the unselected cluster
+                # most similar to the anchor (paper lines 10-12).
+                for si in group_sets:
+                    if si == anchor_si or not remaining[si]:
+                        continue
+                    best_ci, best_sim = None, -float('inf')
+                    for ci in remaining[si]:
+                        s = _cluster_similarity(reps[(si, ci)], anchor_rep,
+                                                similarity_matrix)
+                        if s > best_sim:
+                            best_sim, best_ci = s, ci
+                    if best_ci is not None:
+                        remaining[si].remove(best_ci)
+                        r_next.append((si, best_ci))
+
+            if not r_next:
+                break
+            next_sets.append(r_next)
 
     return next_sets
 
@@ -169,7 +202,7 @@ def cluster_merge(initial_record_sets, vectors, similarity_matrix, df,
             round_sets = [[c] for c in merged]
             continue
 
-        next_keys = _pack_next_round(round_sets, reps, similarity_matrix, S_s)
+        next_keys = _pack_next_round(round_sets, reps, similarity_matrix, S_s, S_d)
 
         new_round_sets = []
         any_merge = False
